@@ -2,112 +2,98 @@ package main
 
 import (
 	"database/sql"
-	"fmt"
+	"encoding/json"
+
 	"log"
 	"net/http"
 
-	"github.com/gin-gonic/gin"
 	_ "github.com/mattn/go-sqlite3"
 )
 
-type album struct {
-	ID     string  `json:"id"`
-	Title  string  `json:"title"`
-	Artist string  `json:"artist"`
-	Price  float64 `json:"price"`
+type Todo struct {
+	ID        string `json:"id"`
+	Title     string `json:"title"`
+	Completed bool   `json:"completed"`
 }
 
-func addDummyData(db *sql.DB) error {
-	dummyAlbums := []album{
-		{ID: "4", Title: "Album Four", Artist: "Artist A", Price: 29.99},
-		{ID: "5", Title: "Album Five", Artist: "Artist B", Price: 19.99},
-		{ID: "6", Title: "Album Six", Artist: "Artist C", Price: 12.99},
-	}
-
-	insertStmt, err := db.Prepare("INSERT INTO albums(id, title, artist, price) VALUES(?, ?, ?, ?)")
-	if err != nil {
-		return err
-	}
-	defer insertStmt.Close()
-
-	for _, a := range dummyAlbums {
-		_, err := insertStmt.Exec(a.ID, a.Title, a.Artist, a.Price)
-		if err != nil {
-			return err
-		}
-	}
-
-	fmt.Println("Dummy data inserted into the database.")
-	return nil
-}
+var db *sql.DB
 
 func main() {
 	// データベースに接続
-	db, err := sql.Open("sqlite3", "albums.db")
+	var err error                             // エラー変数を定義
+	db, err = sql.Open("sqlite3", "todos.db") // :=とかくと再宣言することになる
 	if err != nil {
 		log.Fatal(err)
 	}
 	defer db.Close()
 
-	// albumsテーブルの作成
-	// createTable := `
-	// 	CREATE TABLE IF NOT EXISTS albums (
-	// 		id TEXT PRIMARY KEY,
-	// 		title TEXT,
-	// 		artist TEXT,
-	// 		price REAL
-	// 	)
-	// `
-	// _, err = db.Exec(createTable)
-	// if err != nil {
-	// 	log.Fatal(err)
-	// }
+	createTable := `
+		CREATE TABLE IF NOT EXISTS todos (
+			id TEXT PRIMARY KEY,
+			title TEXT,
+			completed BOOLEAN
+		)
+	`
+	_, err = db.Exec(createTable)
+	if err != nil {
+		log.Fatal(err)
+	}
 
-	// // ダミーデータの追加
-	// if err := addDummyData(db); err != nil {
-	// 	log.Fatal(err)
-	// }
+	http.HandleFunc("/todos", getTodos)
+	http.HandleFunc("/addTodo", addTodo)
 
-	// Ginルーターのセットアップ
-	router := gin.Default()
-	router.GET("/albums", getAlbums)
-	// 他のエンドポイントのセットアップ
-
-	// サーバーの起動
-	router.Run("localhost:8081")
+	http.ListenAndServe(":8081", nil)
 }
 
-func getAlbums(c *gin.Context) {
-	// SQLiteデータベースに接続
-	db, err := sql.Open("sqlite3", "albums.db")
+func getTodos(w http.ResponseWriter, r *http.Request) {
+	// データベースからTODOの一覧を取得
+	rows, err := db.Query("SELECT id, title, completed FROM todos")
 	if err != nil {
-		// エラーハンドリング
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to connect to the database"})
-		return
-	}
-	defer db.Close()
-
-	// データベースからデータを取得
-	rows, err := db.Query("SELECT id, title, artist FROM albums")
-	if err != nil {
-		// エラーハンドリング
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to retrieve data from the database"})
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 	defer rows.Close()
 
-	// 取得したデータをスライスに格納
-	var albums []album
+	var todos []Todo
+
 	for rows.Next() {
-		var a album
-		err := rows.Scan(&a.ID, &a.Title, &a.Artist)
+		var todo Todo
+		err := rows.Scan(&todo.ID, &todo.Title, &todo.Completed)
 		if err != nil {
-			// エラーハンドリング
-			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to scan data from the database"})
+			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
 		}
-		albums = append(albums, a)
+		todos = append(todos, todo)
 	}
 
-	c.JSON(http.StatusOK, albums)
+	// JSONデータとしてクライアントに返す
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(todos); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+}
+
+func addTodo(w http.ResponseWriter, r *http.Request) {
+	// リクエストボディからJSONデータを解析
+	var todo Todo
+	decoder := json.NewDecoder(r.Body)
+	if err := decoder.Decode(&todo); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	// TODOをデータベースに追加
+	_, err := db.Exec("INSERT INTO todos (id, title, completed) VALUES (?, ?, ?)", todo.ID, todo.Title, todo.Completed)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	// 追加したTODOをJSON形式でクライアントに返す
+	if err := json.NewEncoder(w).Encode(todo); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
