@@ -11,7 +11,7 @@ import (
 )
 
 type Todo struct {
-	ID        string `json:"id"`
+	ID        int    `json:"id"`
 	Title     string `json:"title"`
 	Completed bool   `json:"completed"`
 }
@@ -29,7 +29,7 @@ func main() {
 
 	createTable := `
 		CREATE TABLE IF NOT EXISTS todos (
-			id TEXT PRIMARY KEY,
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			title TEXT,
 			completed BOOLEAN
 		)
@@ -84,15 +84,8 @@ func addTodo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// TODOをデータベースに追加
-	_, err := db.Exec("INSERT INTO todos (id, title, completed) VALUES (?, ?, ?)", todo.ID, todo.Title, todo.Completed)
+	_, err := db.Exec("INSERT INTO todos (title, completed) VALUES (?, ?)", todo.Title, todo.Completed)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	// 追加したTODOをJSON形式でクライアントに返す
-	if err := json.NewEncoder(w).Encode(todo); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
