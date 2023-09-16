@@ -7,6 +7,7 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/gorilla/handlers"
 	_ "github.com/mattn/go-sqlite3"
 )
 
@@ -39,8 +40,28 @@ func main() {
 		log.Fatal(err)
 	}
 
-	http.HandleFunc("/todos", getTodos)
-	http.HandleFunc("/addTodo", addTodo)
+	// CORSミドルウェアを設定
+	corsHandler := handlers.CORS(
+		handlers.AllowedOrigins([]string{"http://localhost:3000"}),  // Reactアプリケーションのオリジンを指定
+		handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS"}), // 許可するHTTPメソッドを指定
+	)
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == "OPTIONS" {
+			// プリフライトリクエストに対して、必要なCORSヘッダーを返す
+			w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+			//w.Header().Set("Access-Control-Allow-Credentials", "true")
+
+			// プリフライトリクエストには空のレスポンスを返す
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+	})
+
+	http.Handle("/todos", corsHandler(http.HandlerFunc(getTodos)))
+	http.Handle("/addTodo", corsHandler(http.HandlerFunc(addTodo)))
 
 	http.ListenAndServe(":8081", nil)
 }
@@ -75,6 +96,9 @@ func getTodos(w http.ResponseWriter, r *http.Request) {
 }
 
 func addTodo(w http.ResponseWriter, r *http.Request) {
+	// リクエストヘッダーにCORS設定を追加
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000") // 許可するオリジンを指定
+
 	// リクエストボディからJSONデータを解析
 	var todo Todo
 	decoder := json.NewDecoder(r.Body)
