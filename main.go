@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"fmt"
 
 	"log"
 	"net/http"
@@ -42,15 +43,16 @@ func main() {
 
 	// CORSミドルウェアを設定
 	corsHandler := handlers.CORS(
-		handlers.AllowedOrigins([]string{"http://localhost:3000"}),  // Reactアプリケーションのオリジンを指定
-		handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS"}), // 許可するHTTPメソッドを指定
+		handlers.AllowedOrigins([]string{"http://localhost:3000"}),            // Reactアプリケーションのオリジンを指定
+		handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS", "DELETE"}), // 許可するHTTPメソッドを指定
+		handlers.AllowedHeaders([]string{"Content-Type"}),
 	)
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == "OPTIONS" {
 			// プリフライトリクエストに対して、必要なCORSヘッダーを返す
 			w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			//w.Header().Set("Access-Control-Allow-Credentials", "true")
 
@@ -62,6 +64,7 @@ func main() {
 
 	http.Handle("/todos", corsHandler(http.HandlerFunc(getTodos)))
 	http.Handle("/addTodo", corsHandler(http.HandlerFunc(addTodo)))
+	http.Handle("/todos/delete", corsHandler(http.HandlerFunc(deleteTodo)))
 
 	http.ListenAndServe(":8081", nil)
 }
@@ -113,4 +116,28 @@ func addTodo(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+}
+
+func deleteTodo(w http.ResponseWriter, r *http.Request) {
+	// リクエストヘッダーにCORS設定を追加
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000") // 許可するオリジンを指定
+
+	todoID := r.URL.Query().Get("id")
+
+	// todoIDのバリデーションを行うことをお勧めします
+	if todoID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, "Missing todoID parameter")
+		return
+	}
+
+	// データベースからTODO項目を削除
+	_, err := db.Exec("DELETE FROM todos WHERE id=?", todoID)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintln(w, "TODO item deleted successfully")
 }
