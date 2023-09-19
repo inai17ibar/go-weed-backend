@@ -7,15 +7,17 @@ import (
 
 	"log"
 	"net/http"
+	"time"
 
 	"github.com/gorilla/handlers"
 	_ "github.com/mattn/go-sqlite3"
 )
 
 type Todo struct {
-	ID        int    `json:"id"`
-	Title     string `json:"title"`
-	Completed bool   `json:"completed"`
+	ID        int       `json:"id"`
+	Title     string    `json:"title"`
+	Completed bool      `json:"completed"`
+	CreatedAt time.Time `json:"created_at"`
 }
 
 var db *sql.DB
@@ -33,7 +35,8 @@ func main() {
 		CREATE TABLE IF NOT EXISTS todos (
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			title TEXT,
-			completed BOOLEAN
+			completed BOOLEAN,
+			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 		)
 	`
 	_, err = db.Exec(createTable)
@@ -71,7 +74,7 @@ func main() {
 
 func getTodos(w http.ResponseWriter, r *http.Request) {
 	// データベースからTODOの一覧を取得
-	rows, err := db.Query("SELECT id, title, completed FROM todos")
+	rows, err := db.Query("SELECT id, title, completed, created_at FROM todos")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -82,7 +85,7 @@ func getTodos(w http.ResponseWriter, r *http.Request) {
 
 	for rows.Next() {
 		var todo Todo
-		err := rows.Scan(&todo.ID, &todo.Title, &todo.Completed)
+		err := rows.Scan(&todo.ID, &todo.Title, &todo.Completed, &todo.CreatedAt)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 			return
