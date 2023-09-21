@@ -46,8 +46,8 @@ func main() {
 
 	// CORSミドルウェアを設定
 	corsHandler := handlers.CORS(
-		handlers.AllowedOrigins([]string{"http://localhost:3000"}),            // Reactアプリケーションのオリジンを指定
-		handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS", "DELETE"}), // 許可するHTTPメソッドを指定
+		handlers.AllowedOrigins([]string{"http://localhost:3000"}),                   // Reactアプリケーションのオリジンを指定
+		handlers.AllowedMethods([]string{"GET", "POST", "OPTIONS", "DELETE", "PUT"}), // 許可するHTTPメソッドを指定
 		handlers.AllowedHeaders([]string{"Content-Type"}),
 	)
 
@@ -55,7 +55,7 @@ func main() {
 		if r.Method == "OPTIONS" {
 			// プリフライトリクエストに対して、必要なCORSヘッダーを返す
 			w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
-			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE")
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE, PUT")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 			//w.Header().Set("Access-Control-Allow-Credentials", "true")
 
@@ -68,6 +68,7 @@ func main() {
 	http.Handle("/todos", corsHandler(http.HandlerFunc(getTodos)))
 	http.Handle("/addTodo", corsHandler(http.HandlerFunc(addTodo)))
 	http.Handle("/todos/delete", corsHandler(http.HandlerFunc(deleteTodo)))
+	http.Handle("/todos/update", corsHandler(http.HandlerFunc(updateTodo)))
 
 	http.ListenAndServe(":8081", nil)
 }
@@ -143,4 +144,38 @@ func deleteTodo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintln(w, "TODO item deleted successfully")
+}
+
+func updateTodo(w http.ResponseWriter, r *http.Request) {
+	// リクエストヘッダーにCORS設定を追加
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000") // 許可するオリジンを指定
+	todoID := r.URL.Query().Get("id")
+
+	// todoIDのバリデーションを行うことをお勧めします
+	if todoID == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, "Missing todoID parameter")
+		return
+	}
+
+	// リクエストボディから新しいタイトルを取得
+	var updateData struct {
+		Title string `json:"title"`
+	}
+	err := json.NewDecoder(r.Body).Decode(&updateData)
+	if err != nil {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, "Invalid request body")
+		return
+	}
+
+	// データベース内のTODOアイテムのタイトルを更新
+	_, err = db.Exec("UPDATE todos SET title=? WHERE id=?", updateData.Title, todoID)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	fmt.Fprintln(w, "TODO item updated successfully")
 }
