@@ -160,7 +160,8 @@ func updateTodo(w http.ResponseWriter, r *http.Request) {
 
 	// リクエストボディから新しいタイトルを取得
 	var updateData struct {
-		Title string `json:"title"`
+		Title     string `json:"title"`
+		Completed bool   `json:"completed"`
 	}
 	err := json.NewDecoder(r.Body).Decode(&updateData)
 	if err != nil {
@@ -169,8 +170,8 @@ func updateTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// データベース内のTODOアイテムのタイトルを更新
-	_, err = db.Exec("UPDATE todos SET title=? WHERE id=?", updateData.Title, todoID)
+	// データベース内のTODOアイテムのタイトルと完了状態を更新
+	_, err = db.Exec("UPDATE todos SET title=?, completed=? WHERE id=?", updateData.Title, updateData.Completed, todoID)
 	if err != nil {
 		log.Println(err)
 		w.WriteHeader(http.StatusInternalServerError)
