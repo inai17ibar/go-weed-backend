@@ -14,18 +14,19 @@ import (
 )
 
 type Todo struct {
-	ID        int       `json:"id"`
-	Title     string    `json:"title"`
-	Completed bool      `json:"completed"`
-	CreatedAt time.Time `json:"created_at"`
+	ID          int       `json:"id"`
+	Title       string    `json:"title"`
+	Completed   bool      `json:"completed"`
+	CreatedAt   time.Time `json:"created_at"`
+	CreatedDate string    `json:"created_date"`
 }
 
 var db *sql.DB
 
 func main() {
 	// データベースに接続
-	var err error                             // エラー変数を定義
-	db, err = sql.Open("sqlite3", "todos.db") // :=とかくと再宣言することになる
+	var err error                                               // エラー変数を定義
+	db, err = sql.Open("sqlite3", "todos.db?_loc=Asia%2FTokyo") // :=とかくと再宣言することになる
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -36,7 +37,8 @@ func main() {
 			id INTEGER PRIMARY KEY AUTOINCREMENT,
 			title TEXT,
 			completed BOOLEAN,
-			created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+			created_at TIMESTAMP DEFAULT (DATETIME(CURRENT_TIMESTAMP,'localtime')),
+			created_date TEXT
 		)
 	`
 	_, err = db.Exec(createTable)
@@ -57,7 +59,6 @@ func main() {
 			w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS, DELETE, PUT")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-			//w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 			// プリフライトリクエストには空のレスポンスを返す
 			w.WriteHeader(http.StatusNoContent)
@@ -69,8 +70,15 @@ func main() {
 	http.Handle("/addTodo", corsHandler(http.HandlerFunc(addTodo)))
 	http.Handle("/todos/delete", corsHandler(http.HandlerFunc(deleteTodo)))
 	http.Handle("/todos/update", corsHandler(http.HandlerFunc(updateTodo)))
+	http.Handle("/todosByDate", corsHandler(http.HandlerFunc(getTodosByDate)))
 
 	http.ListenAndServe(":8081", nil)
+}
+
+// データベースから取得したタイムスタンプを日本時間に変換する
+func convertToJapanTime(dbTime time.Time) time.Time {
+	japanLocation, _ := time.LoadLocation("Asia/Tokyo")
+	return dbTime.In(japanLocation)
 }
 
 func getTodos(w http.ResponseWriter, r *http.Request) {
@@ -114,8 +122,13 @@ func addTodo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// 現在の日付を取得（時間を含まない）
+	currentDate := convertToJapanTime(time.Now()).Truncate(24 * time.Hour)
+	date := currentDate.Format("2006-01-02")
+
 	// TODOをデータベースに追加
-	_, err := db.Exec("INSERT INTO todos (title, completed) VALUES (?, ?)", todo.Title, todo.Completed)
+	_, err := db.Exec("INSERT INTO todos (title, completed, created_date) VALUES (?, ?, ?)", todo.Title, todo.Completed, date)
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -179,4 +192,42 @@ func updateTodo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	fmt.Fprintln(w, "TODO item updated successfully")
+}
+
+func getTodosByDate(w http.ResponseWriter, r *http.Request) {
+	// リクエストヘッダーにCORS設定を追加
+	w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000") // 許可するオリジンを指定
+	date := r.URL.Query().Get("created_date")
+
+	// 日付のバリデーションを行うことをお勧めします
+	if date == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, "Missing 'created_date' parameter in the request")
+		return
+	}
+
+	// データベースから指定された日付のTODO項目を取得
+	rows, err := db.Query("SELECT id, title, completed FROM todos WHERE created_date=?", date)
+	if err != nil {
+		log.Println(err)
+		w.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+	defer rows.Close()
+
+	var todos []Todo
+	for rows.Next() {
+		var todo Todo
+		err := rows.Scan(&todo.ID, &todo.Title, &todo.Completed)
+		if err != nil {
+			log.Println(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		todos = append(todos, todo)
+	}
+
+	// TODOリストをJSON形式で返す
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(todos)
 }
