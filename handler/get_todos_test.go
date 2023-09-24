@@ -1,4 +1,4 @@
-package main
+package handler
 
 import (
 	"encoding/json"
@@ -8,13 +8,13 @@ import (
 	"os"
 	"testing"
 
-	"go-weed-backend/handler"
 	"go-weed-backend/model"
 
 	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
-var db *gorm.DB
+//var db *gorm.DB
 
 func TestGetTodos(t *testing.T) {
 	// テスト用のデータベースをセットアップ
@@ -23,7 +23,7 @@ func TestGetTodos(t *testing.T) {
 	defer cleanup()
 
 	// ハンドラの初期化
-	handler.Init(db) // 追加
+	Init(db) // 追加
 
 	// テスト用のダミーTODOデータを挿入
 	createDummyTodoData()
@@ -33,7 +33,7 @@ func TestGetTodos(t *testing.T) {
 	w := httptest.NewRecorder()
 
 	// ハンドラ関数を呼び出し
-	handler.GetTodos(w, req)
+	GetTodos(w, req)
 
 	// HTTPレスポンスを取得
 	resp := w.Result()
