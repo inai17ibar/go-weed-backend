@@ -1,11 +1,10 @@
 package main
 
 import (
+	"go-weed-backend/api"
 	"go-weed-backend/handler"
 	"go-weed-backend/model"
-	"go-weed-backend/router"
 	"log"
-	"net/http"
 
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
@@ -29,8 +28,9 @@ func main() {
 	handler.Init(db)
 
 	// ルーターのセットアップ
-	r := router.NewRouter()
+	//r := router.NewRouter()
 
 	// サーバの起動
-	log.Fatal(http.ListenAndServe(":8081", r))
+	//log.Fatal(http.ListenAndServe(":8081", r))
+	api.CallGithubAPI()
 }
