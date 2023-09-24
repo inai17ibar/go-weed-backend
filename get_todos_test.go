@@ -8,23 +8,32 @@ import (
 	"os"
 	"testing"
 
+	"go-weed-backend/handler"
+	"go-weed-backend/model"
+
 	"github.com/jinzhu/gorm"
 )
 
+var db *gorm.DB
+
 func TestGetTodos(t *testing.T) {
 	// テスト用のデータベースをセットアップ
-	db, cleanup := setupTestDatabase()
+	var cleanup func()
+	db, cleanup = setupTestDatabase()
 	defer cleanup()
 
+	// ハンドラの初期化
+	handler.Init(db) // 追加
+
 	// テスト用のダミーTODOデータを挿入
-	createDummyTodoData(db)
+	createDummyTodoData()
 
 	// テスト用のHTTPリクエストを作成
 	req := httptest.NewRequest("GET", "/todos", nil)
 	w := httptest.NewRecorder()
 
 	// ハンドラ関数を呼び出し
-	getTodos(w, req)
+	handler.GetTodos(w, req)
 
 	// HTTPレスポンスを取得
 	resp := w.Result()
@@ -42,7 +51,7 @@ func TestGetTodos(t *testing.T) {
 	}
 
 	// レスポンスボディをJSONデコード
-	var todos []Todo
+	var todos []model.Todo
 	err := json.NewDecoder(resp.Body).Decode(&todos)
 	if err != nil {
 		t.Errorf("Failed to decode JSON response: %v", err)
@@ -69,7 +78,7 @@ func setupTestDatabase() (*gorm.DB, func()) {
 	}
 
 	// マイグレーションを実行してテーブルを作成
-	db.AutoMigrate(&Todo{})
+	db.AutoMigrate(&model.Todo{})
 
 	// クリーンアップ用の関数を返す
 	cleanup := func() {
@@ -83,8 +92,8 @@ func setupTestDatabase() (*gorm.DB, func()) {
 }
 
 // ダミーのTODOデータを作成しデータベースに挿入
-func createDummyTodoData(db *gorm.DB) {
-	dummyTodos := []Todo{
+func createDummyTodoData() {
+	dummyTodos := []model.Todo{
 		{Title: "Task 1", Completed: false, Created_Date: "2023-09-01"},
 		{Title: "Task 2", Completed: true, Created_Date: "2023-09-02"},
 		{Title: "Task 3", Completed: false, Created_Date: "2023-09-03"},
