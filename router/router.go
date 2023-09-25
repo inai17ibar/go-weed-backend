@@ -20,7 +20,7 @@ func NewRouter() http.Handler {
 	mux.Handle("/addTodo", corsHandler(http.HandlerFunc(handler.AddTodo)))
 	mux.Handle("/todos/delete", corsHandler(http.HandlerFunc(handler.DeleteTodo)))
 	mux.Handle("/todos/update", corsHandler(http.HandlerFunc(handler.UpdateTodo)))
-	mux.Handle("/todosByDate", corsHandler(http.HandlerFunc(handler.GetTodosByDate)))
+	mux.Handle("/commits", corsHandler(http.HandlerFunc(handler.GetCommits)))
 
 	return mux
 }
