@@ -59,9 +59,9 @@ func CallGithubAllCommitAPI() {
 }
 
 func CallGithubCommitAPI(commitCount int) ([]*github.RepositoryCommit, error) {
-	apiKey, exists := os.LookupEnv("GITHUB_API_KEY")
+	apiKey, exists := os.LookupEnv("API_KEY_GITHUB")
 	if !exists {
-		log.Fatal("Error: GITHUB_API_KEY not set")
+		log.Fatal("Error: API_KEY_GITHUB not set")
 	}
 
 	fmt.Println("API Key:", apiKey)
