@@ -20,3 +20,5 @@ jobs:
 
     - name: Run tests
       run: go test ./...
+      env:
+        API_KEY_GITHUB: ${{ secrets.API_KEY_GITHUB }}
