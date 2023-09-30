@@ -15,7 +15,10 @@ type Todo struct {
 
 type MyCommit struct {
 	gorm.Model
-	SHA     string    `json:"Sha"`
-	Message string    `json:"Message"`
-	Date    time.Time `json:"Date"`
+	SHA       string    `json:"Sha"`
+	Message   string    `json:"Message"`
+	Date      time.Time `json:"Date"`
+	Additions int       `json:"Additions"`
+	Deletions int       `json:"Deletions"`
+	Total     int       `json:"Total"`
 }

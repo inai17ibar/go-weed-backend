@@ -66,10 +66,22 @@ func CallGithubAllCommitAPI() ([]model.MyCommit, error) {
 
 			// Only include commits authored or committed by the target user
 			if authorLogin == targetUser || committerLogin == targetUser {
+				// コミットの統計情報を取得
+				commitDetail, _, err := client.Repositories.GetCommit(ctx, *repo.Owner.Login, *repo.Name, *commit.SHA, nil)
+				if err != nil {
+					log.Printf("Error fetching commit detail for commit %s in repository %s: %v", *commit.SHA, *repo.Name, err)
+					continue
+				}
+				stats := commitDetail.GetStats()
+				//これをしたらおそくなる
+
 				myCommit := model.MyCommit{
-					SHA:     *commit.SHA,
-					Message: *commit.Commit.Message,
-					Date:    commit.Commit.Author.GetDate(),
+					SHA:       *commit.SHA,
+					Message:   *commit.Commit.Message,
+					Date:      commit.Commit.Author.GetDate(),
+					Additions: stats.GetAdditions(), // 追加された行数
+					Deletions: stats.GetDeletions(), // 削除された行数
+					Total:     stats.GetTotal(),     // 合計変更行数
 				}
 				allCommits = append(allCommits, myCommit)
 				fmt.Printf("  %s - %s\n", *commit.SHA, *commit.Commit.Message)

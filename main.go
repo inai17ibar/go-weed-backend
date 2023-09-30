@@ -28,7 +28,7 @@ func fetchAndSaveCommits() {
 	var lastCommit model.MyCommit
 	db.Order("date desc").First(&lastCommit)
 
-	var commits []model.MyCommit // ← これを修正
+	var commits []model.MyCommit
 
 	var err error
 	commits, err = api.CallGithubAllCommitAPI()
@@ -61,7 +61,7 @@ func main() {
 
 	// マイグレーションを実行してテーブルを作成
 	db.AutoMigrate(&model.Todo{})
-	db.AutoMigrate(&model.MyCommit{})
+	db.AutoMigrate(&model.MyCommit{}) //これがそのままテーブル名になる
 
 	go func() {
 		// サーバー起動後、初回のフェッチは遅延させる
