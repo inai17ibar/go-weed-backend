@@ -120,7 +120,7 @@ func GetTodosByDate(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(todos)
 }
 
-func AggregateCommitDataByDate() {
+func AggregateCommitDataByDate(w http.ResponseWriter, r *http.Request) {
 	var commits []model.MyCommit
 	if err := db.Find(&commits).Error; err != nil {
 		log.Fatalf("Failed to get commits from database: %v", err)
@@ -141,4 +141,13 @@ func AggregateCommitDataByDate() {
 		commitDataByDate[date].Deletions += commit.Deletions
 		commitDataByDate[date].Total += commit.Total
 	}
+
+	// JSONオブジェクトを生成
+	jsonData, err := json.Marshal(commitDataByDate)
+	if err != nil {
+		log.Fatalf("Failed to marshal JSON: %v", err)
+	}
+	// TODOリストをJSON形式で返す
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(jsonData)
 }

@@ -22,6 +22,7 @@ func NewRouter() http.Handler {
 	mux.Handle("/todos/update", corsHandler(http.HandlerFunc(handler.UpdateTodo)))
 	mux.Handle("/todosByDate", corsHandler(http.HandlerFunc(handler.GetTodosByDate)))
 	mux.Handle("/commits", corsHandler(http.HandlerFunc(handler.GetCommits)))
+	mux.Handle("/commitDataByDate", corsHandler(http.HandlerFunc(handler.AggregateCommitDataByDate)))
 
 	return mux
 }
