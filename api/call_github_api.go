@@ -3,6 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"go-weed-backend/model"
 	"log"
 	"os"
 	"sort"
@@ -11,7 +12,7 @@ import (
 	"golang.org/x/oauth2"
 )
 
-func CallGithubAllCommitAPI() {
+func CallGithubAllCommitAPI() ([]model.MyCommit, error) {
 	apiKey, exists := os.LookupEnv("API_KEY_GITHUB")
 	if !exists {
 		log.Fatal("Error: API_KEY_GITHUB not set")
@@ -44,18 +45,44 @@ func CallGithubAllCommitAPI() {
 		opt.Page = resp.NextPage
 	}
 
+	var allCommits []model.MyCommit
 	// Get commit history for each repository
 	for _, repo := range allRepos {
+		if *repo.Fork {
+			continue
+		}
 		commits, _, err := client.Repositories.ListCommits(ctx, *repo.Owner.Login, *repo.Name, nil)
 		if err != nil {
 			log.Printf("Error fetching commits for repository %s: %v", *repo.Name, err)
 			continue
 		}
+
+		targetUser := "inai17ibar" // Replace with your GitHub username
+
 		fmt.Printf("Commits in %s:\n", *repo.Name)
 		for _, commit := range commits {
-			fmt.Printf("  %s - %s\n", *commit.SHA, *commit.Commit.Message)
+			authorLogin := commit.Author.GetLogin()
+			committerLogin := commit.Committer.GetLogin()
+
+			// Only include commits authored or committed by the target user
+			if authorLogin == targetUser || committerLogin == targetUser {
+				myCommit := model.MyCommit{
+					SHA:     *commit.SHA,
+					Message: *commit.Commit.Message,
+					Date:    commit.Commit.Author.GetDate(),
+				}
+				allCommits = append(allCommits, myCommit)
+				fmt.Printf("  %s - %s\n", *commit.SHA, *commit.Commit.Message)
+			}
 		}
 	}
+
+	// allCommitsを日時でソート
+	sort.Slice(allCommits, func(i, j int) bool {
+		return allCommits[i].Date.After(allCommits[j].Date)
+	})
+
+	return allCommits, nil
 }
 
 func CallGithubCommitAPI(commitCount int) ([]*github.RepositoryCommit, error) {
