@@ -147,7 +147,8 @@ func AggregateCommitDataByDate(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		log.Fatalf("Failed to marshal JSON: %v", err)
 	}
-	// TODOリストをJSON形式で返す
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(jsonData)
+	// すでにバイト配列化されたjsonDataを書き込む
+	w.Write(jsonData)
 }

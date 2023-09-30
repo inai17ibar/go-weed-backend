@@ -55,7 +55,7 @@ func TestGetCommits(t *testing.T) {
 	}
 
 	// ダミーTODOデータが正しく取得できたか確認
-	expectedCommitsCount := 2 // ダミーデータが3つ挿入されていると仮定
+	expectedCommitsCount := 5 // ダミーデータが3つ挿入されていると仮定
 	if len(myCommits) != expectedCommitsCount {
 		t.Errorf("Expected %d TODO items, got %d", expectedCommitsCount, len(myCommits))
 	}
@@ -88,8 +88,11 @@ func setupTestCommitsDatabase() (*gorm.DB, func()) {
 // ダミーのTODOデータを作成しデータベースに挿入
 func createDummyCommitsData() {
 	dummyCommits := []model.MyCommit{
-		{SHA: "aaaaa", Message: "Message1", Date: time.Now(), Additions: 0, Deletions: 0, Total: 1},
-		{SHA: "bbbbb", Message: "Message2", Date: time.Now(), Additions: 0, Deletions: 0, Total: 1},
+		{SHA: "aaaaa", Message: "Message1", Date: time.Now().Add(-24 * time.Hour), Additions: 0, Deletions: 0, Total: 1},
+		{SHA: "bbbbb", Message: "Message2", Date: time.Now().Add(-24 * time.Hour), Additions: 1, Deletions: 1, Total: 2},
+		{SHA: "ccccc", Message: "Message3", Date: time.Now().Add(-48 * time.Hour), Additions: 2, Deletions: 2, Total: 4},
+		{SHA: "ddddd", Message: "Message4", Date: time.Now().Add(-48 * time.Hour), Additions: 3, Deletions: 3, Total: 6},
+		{SHA: "eeeee", Message: "Message5", Date: time.Now().Add(-48 * time.Hour), Additions: 4, Deletions: 4, Total: 8},
 	}
 
 	for _, commits := range dummyCommits {
