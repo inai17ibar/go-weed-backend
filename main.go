@@ -44,12 +44,6 @@ func fetchAndSaveCommits() {
 	}
 }
 
-// func getCommits(c *gin.Context) {
-// 	var commits []model.MyCommit
-// 	db.Order("date desc").Find(&commits)
-// 	c.JSON(http.StatusOK, commits)
-// }
-
 func main() {
 	// データベースに接続
 	var err error
@@ -77,27 +71,4 @@ func main() {
 
 	// サーバの起動
 	log.Fatal(http.ListenAndServe(":8081", r))
-
-	//これをもとにテストをかく
-	// commitCount := 5 // 例として、5を用います。
-	// commits, err := api.CallGithubCommitAPI(commitCount)
-	// if err != nil {
-	// 	log.Fatalf("Error calling API: %v", err)
-	// }
-
-	// fmt.Printf("Latest %d commits:\n", commitCount)
-	// // commitsは []*github.RepositoryCommit 型と仮定
-	// for _, commit := range commits {
-	// 	if commit == nil {
-	// 		fmt.Println("  commit is nil")
-	// 		continue
-	// 	}
-
-	// 	if commit.SHA == nil || commit.Commit == nil || commit.Commit.Message == nil {
-	// 		fmt.Println("  commit.SHA, commit.Commit, or commit.Commit.Message is nil")
-	// 		continue
-	// 	}
-
-	// 	fmt.Printf("  %s - %s\n", *commit.SHA, *commit.Commit.Message)
-	// }
 }

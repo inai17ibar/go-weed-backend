@@ -2,34 +2,18 @@ package handler
 
 import (
 	"encoding/json"
-	"fmt"
-	"go-weed-backend/api"
+	"go-weed-backend/model"
 	"net/http"
-	"strconv"
 )
 
 func GetCommits(w http.ResponseWriter, r *http.Request) {
-	query := r.URL.Query().Get("commitCount")
-	if query == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, "Missing 'commitCount' parameter in the request")
-		return
-	}
+	var my_commits []model.MyCommit
+	db.Find(&my_commits)
 
-	commitCount, err := strconv.Atoi(query)
-	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, "'commitCount' parameter must be a valid integer")
-		return
-	}
-
-	allCommits, err := api.CallGithubCommitAPI(commitCount)
-	if err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		fmt.Fprintln(w, "Error fetching commits")
-		return
-	}
-
+	// JSONデータとしてクライアントに返す
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(allCommits)
+	if err := json.NewEncoder(w).Encode(my_commits); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 }
