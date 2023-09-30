@@ -22,3 +22,10 @@ type MyCommit struct {
 	Deletions int       `json:"Deletions"`
 	Total     int       `json:"Total"`
 }
+
+type CommitData struct {
+	Count     int `json:"Count"`
+	Additions int `json:"Additions"`
+	Deletions int `json:"Deletions"`
+	Total     int `json:"Total"`
+}

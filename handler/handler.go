@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"log"
 	"net/http"
 
 	"encoding/json"
@@ -117,4 +118,27 @@ func GetTodosByDate(w http.ResponseWriter, r *http.Request) {
 	// TODOリストをJSON形式で返す
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(todos)
+}
+
+func AggregateCommitDataByDate() {
+	var commits []model.MyCommit
+	if err := db.Find(&commits).Error; err != nil {
+		log.Fatalf("Failed to get commits from database: %v", err)
+	}
+
+	commitDataByDate := make(map[string]*model.CommitData)
+	for _, commit := range commits {
+		date := commit.Date.Format("2006-01-02")
+
+		// 日付ごとのデータがなければ新しく作成
+		if commitDataByDate[date] == nil {
+			commitDataByDate[date] = &model.CommitData{}
+		}
+
+		// 日付ごとのコミット数とコード変更量を累計
+		commitDataByDate[date].Count++
+		commitDataByDate[date].Additions += commit.Additions
+		commitDataByDate[date].Deletions += commit.Deletions
+		commitDataByDate[date].Total += commit.Total
+	}
 }

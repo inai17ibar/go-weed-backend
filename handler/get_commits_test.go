@@ -55,13 +55,10 @@ func TestGetCommits(t *testing.T) {
 	}
 
 	// ダミーTODOデータが正しく取得できたか確認
-	expectedTodoCount := 2 // ダミーデータが3つ挿入されていると仮定
-	if len(myCommits) != expectedTodoCount {
-		t.Errorf("Expected %d TODO items, got %d", expectedTodoCount, len(myCommits))
+	expectedCommitsCount := 2 // ダミーデータが3つ挿入されていると仮定
+	if len(myCommits) != expectedCommitsCount {
+		t.Errorf("Expected %d TODO items, got %d", expectedCommitsCount, len(myCommits))
 	}
-
-	// ここでtodosを期待するデータと比較して、JSONレスポンスの内容を検証することができます
-
 	// クリーンアップ
 	resp.Body.Close()
 }
