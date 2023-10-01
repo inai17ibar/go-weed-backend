@@ -3,6 +3,7 @@ package handler
 import (
 	"log"
 	"net/http"
+	"sort"
 
 	"encoding/json"
 	"fmt"
@@ -152,6 +153,24 @@ func AggregateCommitDataByDate(w http.ResponseWriter, r *http.Request) {
 			Total:     data.Total,
 		})
 	}
+
+	//日付で昇順ソートする
+	sort.Slice(commitDataList, func(i, j int) bool {
+		iDate, err := time.Parse("2006-01-02", commitDataList[i].Date)
+		if err != nil {
+			// エラーハンドリング
+			return false
+		}
+
+		jDate, err := time.Parse("2006-01-02", commitDataList[j].Date)
+		if err != nil {
+			// エラーハンドリング
+			return false
+		}
+
+		// iDateがjDateより前（昇順）であればtrueを返す
+		return iDate.Before(jDate)
+	})
 
 	jsonData, err := json.Marshal(commitDataList)
 	if err != nil {
