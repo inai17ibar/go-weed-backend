@@ -142,13 +142,22 @@ func AggregateCommitDataByDate(w http.ResponseWriter, r *http.Request) {
 		commitDataByDate[date].Total += commit.Total
 	}
 
-	// JSONオブジェクトを生成
-	jsonData, err := json.Marshal(commitDataByDate)
+	var commitDataList []model.CommitData
+	for date, data := range commitDataByDate {
+		commitDataList = append(commitDataList, model.CommitData{
+			Date:      date,
+			Count:     data.Count,
+			Additions: data.Additions,
+			Deletions: data.Deletions,
+			Total:     data.Total,
+		})
+	}
+
+	jsonData, err := json.Marshal(commitDataList)
 	if err != nil {
 		log.Fatalf("Failed to marshal JSON: %v", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	// すでにバイト配列化されたjsonDataを書き込む
 	w.Write(jsonData)
 }

@@ -44,16 +44,16 @@ func TestAggregateCommitDataByDate(t *testing.T) {
 	}
 
 	// レスポンスボディをJSONデコード
-	var commitData map[string]model.CommitData
-	err := json.NewDecoder(resp.Body).Decode(&commitData)
+	var commitDataList []model.CommitData
+	err := json.NewDecoder(resp.Body).Decode(&commitDataList)
 	if err != nil {
 		t.Errorf("Failed to decode JSON response: %v", err)
 	}
 
 	// ダミーTODOデータが正しく取得できたか確認
 	expectedCommitsCount := 2 // ダミーデータが3つ挿入されていると仮定
-	if len(commitData) != expectedCommitsCount {
-		t.Errorf("Expected %d TODO items, got %d", expectedCommitsCount, len(commitData))
+	if len(commitDataList) != expectedCommitsCount {
+		t.Errorf("Expected %d TODO items, got %d", expectedCommitsCount, len(commitDataList))
 	}
 	// クリーンアップ
 	resp.Body.Close()
