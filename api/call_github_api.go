@@ -3,7 +3,7 @@ package api
 import (
 	"context"
 	"fmt"
-	"go-weed-backend/model"
+	"go-weed-backend/internal/model"
 	"log"
 	"os"
 	"sort"

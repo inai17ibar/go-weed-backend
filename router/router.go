@@ -1,7 +1,7 @@
 package router
 
 import (
-	"go-weed-backend/handler"
+	"go-weed-backend/internal/handler"
 	"net/http"
 
 	"github.com/gorilla/handlers"
