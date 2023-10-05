@@ -1,0 +1,8 @@
+{
+    "server_port": "8081",
+    "CORS": {
+        "AllowedOrigins": ["http://localhost:3000"],
+        "AllowedMethods": ["GET", "POST", "OPTIONS", "DELETE", "PUT"],
+        "AllowedHeaders": ["Content-Type"]
+      }
+}
