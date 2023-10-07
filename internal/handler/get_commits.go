@@ -8,7 +8,7 @@ import (
 
 func GetCommits(w http.ResponseWriter, r *http.Request) {
 	var my_commits []model.MyCommit
-	db.Find(&my_commits)
+	db.Order("date desc").Find(&my_commits)
 
 	// JSONデータとしてクライアントに返す
 	w.Header().Set("Content-Type", "application/json")
