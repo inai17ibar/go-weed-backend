@@ -41,8 +41,47 @@ func LoadConfig(filename string) (Config, error) {
 func fetchCommitsPeriodically() {
 	for {
 		fetchAndSaveCommits()
+		fetchAndSaveContribution()
 		// タイマーを設定して、一定時間ごとにフェッチ
 		time.Sleep(6 * time.Hour) // 例: 6時間ごとにフェッチ
+	}
+}
+
+func fetchAndSaveContribution() {
+	// 最後のコミットの日付を取得
+	var lastContribution model.ContributionDay
+	db.Order("date desc").First(&lastContribution)
+
+	respData, err := api.CallGithubContributionAPI()
+	if err != nil {
+		log.Printf("error fetching GitHub data: %v\n", err)
+		return
+	}
+
+	var contributions []model.ContributionDay
+	for _, week := range respData.Data.User.ContributionsCollection.ContributionCalendar.Weeks {
+		for _, day := range week.ContributionDays {
+			contributions = append(contributions, day)
+		}
+	}
+
+	for _, c := range contributions {
+		parsedDate, err := time.Parse("2006-01-02", c.Date)
+		if err != nil {
+			log.Printf("error parsing date: %v\n", err)
+			continue
+		}
+
+		t, err := time.Parse("2006-01-02", lastContribution.Date)
+		if err != nil {
+			log.Printf("error parsing date: %v\n", err)
+			continue
+		}
+		if parsedDate.After(t) {
+			if err := db.Save(&c).Error; err != nil {
+				log.Printf("error saving contribution: %v\n", err)
+			}
+		}
 	}
 }
 
@@ -92,10 +131,11 @@ func main() {
 	// マイグレーションを実行してテーブルを作成
 	db.AutoMigrate(&model.Todo{})
 	db.AutoMigrate(&model.MyCommit{}) //これがそのままテーブル名になる
+	db.AutoMigrate(&model.ContributionDay{})
 
 	go func() {
 		// サーバー起動後、初回のフェッチは遅延させる
-		time.Sleep(60 * time.Minute) //もっといい書き方を考えたい、別プログラムとか
+		//time.Sleep(60 * time.Minute) //もっといい書き方を考えたい、別プログラムとか
 		fetchCommitsPeriodically()
 	}()
 

@@ -7,8 +7,10 @@ import (
 	"log"
 	"os"
 	"sort"
+	"time"
 
 	"github.com/google/go-github/v39/github"
+	"github.com/shurcooL/githubv4"
 	"golang.org/x/oauth2"
 )
 
@@ -97,4 +99,59 @@ func CallGithubAllCommitAPI() ([]model.MyCommit, error) {
 	return allCommits, nil
 }
 
-//要エラーハンドリング
+func CallGithubContributionAPI() (*model.GraphQLResponse, error) {
+	apiKey, exists := os.LookupEnv("API_KEY_GITHUB")
+	if !exists {
+		log.Fatal("Error: API_KEY_GITHUB not set")
+	}
+
+	// GitHub APIクライアントの初期化
+	src := oauth2.StaticTokenSource(
+		&oauth2.Token{AccessToken: apiKey},
+	)
+	httpClient := oauth2.NewClient(context.Background(), src)
+	client := githubv4.NewClient(httpClient)
+
+	var response model.GraphQLResponse
+
+	// 実際のGraphQLクエリ
+	var query struct {
+		User struct {
+			ContributionsCollection struct {
+				ContributionCalendar model.ContributionCalendar
+			} `graphql:"contributionsCollection(from: $from, to: $to)"`
+		} `graphql:"user(login: $login)"` //@arguments(login: { type: \"String!\", value: $login })"
+	}
+
+	currentDate := time.Now().Format("2006-01-02T15:04:05Z")
+	startDate := time.Now().AddDate(-1, 0, 0).Format("2006-01-02T15:04:05Z")
+	fmt.Printf("startDate: %s\n", startDate)
+	fmt.Printf("currentDate: %s\n", currentDate)
+
+	// クエリの変数をセット
+	variables := map[string]interface{}{
+		"login": githubv4.String("inai17ibar"),
+		"from":  githubv4.DateTime{Time: time.Date(2022, 10, 8, 14, 0, 19, 0, time.UTC)},
+		"to":    githubv4.DateTime{Time: time.Date(2023, 10, 8, 14, 0, 19, 0, time.UTC)},
+	}
+
+	// クエリ実行
+	err := client.Query(context.Background(), &query, variables)
+	if err != nil {
+		fmt.Printf("Error fetching GitHub data: %v\n", err)
+		return nil, err
+	}
+
+	// データの処理
+	fmt.Printf("Total Contributions: %d\n", query.User.ContributionsCollection.ContributionCalendar.TotalContributions)
+	// for _, week := range query.User.ContributionsCollection.ContributionCalendar.Weeks {
+	// 	for _, day := range week.ContributionDays {
+	// 		fmt.Printf("Date: %s, Contributions: %d\n", day.Date, day.ContributionCount)
+	// 	}
+	// }
+
+	response.Data.User.ContributionsCollection.ContributionCalendar = query.User.ContributionsCollection.ContributionCalendar
+
+	//fmt.Printf("GraphQL Response: %+v\n", response)
+	return &response, nil
+}
