@@ -48,7 +48,7 @@ func fetchCommitsPeriodically() {
 }
 
 func fetchAndSaveContribution() {
-	// 最後のコミットの日付を取得
+	// 最後のコントリビューションの日付を取得
 	var lastContribution model.ContributionDay
 	db.Order("date desc").First(&lastContribution)
 
@@ -60,9 +60,7 @@ func fetchAndSaveContribution() {
 
 	var contributions []model.ContributionDay
 	for _, week := range respData.Data.User.ContributionsCollection.ContributionCalendar.Weeks {
-		for _, day := range week.ContributionDays {
-			contributions = append(contributions, day)
-		}
+		contributions = append(contributions, week.ContributionDays...)
 	}
 
 	for _, c := range contributions {
