@@ -38,31 +38,31 @@ type GraphQLResponse struct {
 
 // Data represents the data field in the GraphQL response
 type Data struct {
-	User User `json:"user" graphql:"user"`
+	User User `json:"User" graphql:"user"`
 }
 
 // User represents the user field in the GraphQL response
 type User struct {
-	ContributionsCollection ContributionsCollection `json:"contributionsCollection" graphql:"contributionsCollection"`
+	ContributionsCollection ContributionsCollection `json:"ContributionsCollection" graphql:"contributionsCollection"`
 }
 
 // ContributionsCollection represents the contributionsCollection field in the GraphQL response
 type ContributionsCollection struct {
-	ContributionCalendar ContributionCalendar `json:"contributionCalendar" graphql:"contributionCalendar"`
+	ContributionCalendar ContributionCalendar `json:"ContributionCalendar" graphql:"contributionCalendar"`
 }
 
 // ContributionCalendar represents the contributionCalendar field in the GraphQL response
 type ContributionCalendar struct {
-	TotalContributions int    `json:"totalContributions" graphql:"totalContributions"`
-	Weeks              []Week `json:"weeks" graphql:"weeks"`
+	TotalContributions int    `json:"TotalContributions" graphql:"totalContributions"`
+	Weeks              []Week `json:"Weeks" graphql:"weeks"`
 }
 
 // Week represents each week's data in the contributionCalendar
 type Week struct {
-	ContributionDays []ContributionDay `json:"contributionDays" graphql:"contributionDays"`
+	ContributionDays []ContributionDay `json:"DontributionDays" graphql:"contributionDays"`
 }
 
 type ContributionDay struct {
-	Date              string `json:"date" graphql:"date"`
-	ContributionCount int    `json:"contributionCount" graphql:"contributionCount"`
+	Date              string `json:"Date" graphql:"date"`
+	ContributionCount int    `json:"ContributionCount" graphql:"contributionCount"`
 }

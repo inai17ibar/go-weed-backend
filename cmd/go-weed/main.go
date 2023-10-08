@@ -64,20 +64,20 @@ func fetchAndSaveContribution() {
 	}
 
 	for _, c := range contributions {
-		parsedDate, err := time.Parse("2006-01-02", c.Date)
-		if err != nil {
-			log.Printf("error parsing date: %v\n", err)
-			continue
-		}
-
-		t, err := time.Parse("2006-01-02", lastContribution.Date)
-		if err != nil {
-			log.Printf("error parsing date: %v\n", err)
-			continue
-		}
-		if parsedDate.After(t) {
-			if err := db.Save(&c).Error; err != nil {
-				log.Printf("error saving contribution: %v\n", err)
+		existingData := model.ContributionDay{}
+		if err := db.Where("date = ?", c.Date).First(&existingData).Error; err != nil {
+			if err == gorm.ErrRecordNotFound {
+				// データが見つからない場合、新しいデータとして保存
+				if err := db.Create(&c).Error; err != nil {
+					log.Printf("error creating contribution: %v\n", err)
+				}
+			} else {
+				log.Printf("error querying contribution: %v\n", err)
+			}
+		} else {
+			// 既存のデータが存在する場合、新しいデータで上書き
+			if err := db.Model(&existingData).Updates(&c).Error; err != nil {
+				log.Printf("error updating contribution: %v\n", err)
 			}
 		}
 	}
@@ -133,7 +133,7 @@ func main() {
 
 	go func() {
 		// サーバー起動後、初回のフェッチは遅延させる
-		//time.Sleep(60 * time.Minute) //もっといい書き方を考えたい、別プログラムとか
+		time.Sleep(10 * time.Minute) //もっといい書き方を考えたい、別プログラムとか
 		fetchCommitsPeriodically()
 	}()
 
