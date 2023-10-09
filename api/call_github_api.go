@@ -123,16 +123,16 @@ func CallGithubContributionAPI() (*model.GraphQLResponse, error) {
 		} `graphql:"user(login: $login)"` //@arguments(login: { type: \"String!\", value: $login })"
 	}
 
-	currentDate := time.Now().Format("2006-01-02T15:04:05Z")
-	startDate := time.Now().AddDate(-1, 0, 0).Format("2006-01-02T15:04:05Z")
+	currentDate := time.Now()                 //.Format("2006-01-02T15:04:05Z")
+	startDate := time.Now().AddDate(-1, 0, 0) //.Format("2006-01-02T15:04:05Z")
 	fmt.Printf("startDate: %s\n", startDate)
 	fmt.Printf("currentDate: %s\n", currentDate)
 
 	// クエリの変数をセット
 	variables := map[string]interface{}{
 		"login": githubv4.String("inai17ibar"),
-		"from":  githubv4.DateTime{Time: time.Date(2022, 10, 8, 14, 0, 19, 0, time.UTC)},
-		"to":    githubv4.DateTime{Time: time.Date(2023, 10, 8, 14, 0, 19, 0, time.UTC)},
+		"from":  githubv4.DateTime{Time: startDate},
+		"to":    githubv4.DateTime{Time: currentDate},
 	}
 
 	// クエリ実行

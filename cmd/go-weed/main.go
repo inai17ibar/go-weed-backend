@@ -40,7 +40,7 @@ func LoadConfig(filename string) (Config, error) {
 
 func fetchCommitsPeriodically() {
 	for {
-		fetchAndSaveCommits()
+		//fetchAndSaveCommits()
 		fetchAndSaveContribution()
 		// タイマーを設定して、一定時間ごとにフェッチ
 		time.Sleep(6 * time.Hour) // 例: 6時間ごとにフェッチ
@@ -49,12 +49,12 @@ func fetchCommitsPeriodically() {
 
 func fetchAndSaveContribution() {
 	// 最後のコントリビューションの日付を取得
-	var lastContribution model.ContributionDay
+	var lastContribution model.ContributionDayDB
 	db.Order("date desc").First(&lastContribution)
 
 	respData, err := api.CallGithubContributionAPI()
 	if err != nil {
-		log.Printf("error fetching GitHub data: %v\n", err)
+		log.Printf("error fetching GitHubAPI data: %v\n", err)
 		return
 	}
 
@@ -63,8 +63,10 @@ func fetchAndSaveContribution() {
 		contributions = append(contributions, week.ContributionDays...)
 	}
 
-	for _, c := range contributions {
-		existingData := model.ContributionDay{}
+	contributionDaysDB := model.ConvertToDBModels(contributions)
+
+	for _, c := range contributionDaysDB {
+		existingData := model.ContributionDayDB{}
 		if err := db.Where("date = ?", c.Date).First(&existingData).Error; err != nil {
 			if err == gorm.ErrRecordNotFound {
 				// データが見つからない場合、新しいデータとして保存
@@ -129,11 +131,12 @@ func main() {
 	// マイグレーションを実行してテーブルを作成
 	db.AutoMigrate(&model.Todo{})
 	db.AutoMigrate(&model.MyCommit{}) //これがそのままテーブル名になる
-	db.AutoMigrate(&model.ContributionDay{})
+	db.DropTableIfExists(&model.ContributionDay{})
+	db.AutoMigrate(&model.ContributionDayDB{})
 
 	go func() {
 		// サーバー起動後、初回のフェッチは遅延させる
-		time.Sleep(10 * time.Minute) //もっといい書き方を考えたい、別プログラムとか
+		//time.Sleep(10 * time.Minute) //もっといい書き方を考えたい、別プログラムとか
 		fetchCommitsPeriodically()
 	}()
 
