@@ -40,10 +40,10 @@ func LoadConfig(filename string) (Config, error) {
 
 func fetchCommitsPeriodically() {
 	for {
-		//fetchAndSaveCommits()
+		fetchAndSaveCommits()
 		fetchAndSaveContribution()
 		// タイマーを設定して、一定時間ごとにフェッチ
-		time.Sleep(6 * time.Hour) // 例: 6時間ごとにフェッチ
+		time.Sleep(3 * time.Hour) // 例: 6時間ごとにフェッチ
 	}
 }
 
@@ -131,12 +131,11 @@ func main() {
 	// マイグレーションを実行してテーブルを作成
 	db.AutoMigrate(&model.Todo{})
 	db.AutoMigrate(&model.MyCommit{}) //これがそのままテーブル名になる
-	db.DropTableIfExists(&model.ContributionDay{})
 	db.AutoMigrate(&model.ContributionDayDB{})
 
 	go func() {
 		// サーバー起動後、初回のフェッチは遅延させる
-		//time.Sleep(10 * time.Minute) //もっといい書き方を考えたい、別プログラムとか
+		time.Sleep(10 * time.Minute) //もっといい書き方を考えたい、別プログラムとか
 		fetchCommitsPeriodically()
 	}()
 
