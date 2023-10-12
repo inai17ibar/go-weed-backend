@@ -68,6 +68,8 @@ func NewRouter() http.Handler {
 	mux.Handle("/commits", corsHandler(http.HandlerFunc(handler.GetCommits)))
 	mux.Handle("/commitDataByDate", corsHandler(http.HandlerFunc(handler.AggregateCommitDataByDate)))
 	mux.Handle("/contributionDays", corsHandler(http.HandlerFunc(handler.GetContributionDays)))
+	mux.Handle("/fetchCommitContribution", corsHandler(http.HandlerFunc(handler.FetchAndSaveHandler)))
+	mux.Handle("/checkTaskResult", corsHandler(http.HandlerFunc(handler.CheckTaskResultHandler)))
 
 	return mux
 }

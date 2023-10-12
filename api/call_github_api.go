@@ -144,11 +144,6 @@ func CallGithubContributionAPI() (*model.GraphQLResponse, error) {
 
 	// データの処理
 	fmt.Printf("Total Contributions: %d\n", query.User.ContributionsCollection.ContributionCalendar.TotalContributions)
-	// for _, week := range query.User.ContributionsCollection.ContributionCalendar.Weeks {
-	// 	for _, day := range week.ContributionDays {
-	// 		fmt.Printf("Date: %s, Contributions: %d\n", day.Date, day.ContributionCount)
-	// 	}
-	// }
 
 	response.Data.User.ContributionsCollection.ContributionCalendar = query.User.ContributionsCollection.ContributionCalendar
 

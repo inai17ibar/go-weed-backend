@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"go-weed-backend/api"
+	"go-weed-backend/db"
 	"go-weed-backend/internal/handler"
 	"go-weed-backend/internal/model"
 	"go-weed-backend/router"
@@ -12,11 +13,8 @@ import (
 	"os"
 	"time"
 
-	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
-
-var db *gorm.DB
 
 // Config は設定の構造体です。
 type Config struct {
@@ -40,69 +38,10 @@ func LoadConfig(filename string) (Config, error) {
 
 func fetchCommitsPeriodically() {
 	for {
-		fetchAndSaveCommits()
-		fetchAndSaveContribution()
+		api.FetchAndSaveCommits()
+		api.FetchAndSaveContribution()
 		// タイマーを設定して、一定時間ごとにフェッチ
 		time.Sleep(3 * time.Hour) // 例: 6時間ごとにフェッチ
-	}
-}
-
-func fetchAndSaveContribution() {
-	// 最後のコントリビューションの日付を取得
-	var lastContribution model.ContributionDayDB
-	db.Order("date desc").First(&lastContribution)
-
-	respData, err := api.CallGithubContributionAPI()
-	if err != nil {
-		log.Printf("error fetching GitHubAPI data: %v\n", err)
-		return
-	}
-
-	var contributions []model.ContributionDay
-	for _, week := range respData.Data.User.ContributionsCollection.ContributionCalendar.Weeks {
-		contributions = append(contributions, week.ContributionDays...)
-	}
-
-	contributionDaysDB := model.ConvertToDBModels(contributions)
-
-	for _, c := range contributionDaysDB {
-		existingData := model.ContributionDayDB{}
-		if err := db.Where("date = ?", c.Date).First(&existingData).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				// データが見つからない場合、新しいデータとして保存
-				if err := db.Create(&c).Error; err != nil {
-					log.Printf("error creating contribution: %v\n", err)
-				}
-			} else {
-				log.Printf("error querying contribution: %v\n", err)
-			}
-		} else {
-			// 既存のデータが存在する場合、新しいデータで上書き
-			if err := db.Model(&existingData).Updates(&c).Error; err != nil {
-				log.Printf("error updating contribution: %v\n", err)
-			}
-		}
-	}
-}
-
-func fetchAndSaveCommits() {
-	// 最後のコミットの日付を取得
-	var lastCommit model.MyCommit
-	db.Order("date desc").First(&lastCommit)
-
-	var commits []model.MyCommit
-
-	var err error
-	commits, err = api.CallGithubAllCommitAPI()
-	if err != nil {
-		log.Fatalf("Error fetching commits from GitHub API: %v", err)
-	}
-
-	for _, c := range commits {
-		// 最後にフェッチしたコミット以降のコミットだけを保存
-		if c.Date.After(lastCommit.Date) {
-			db.Save(&c)
-		}
 	}
 }
 
@@ -122,16 +61,15 @@ func main() {
 	}
 
 	// データベースに接続
-	db, err = gorm.Open("sqlite3", "todos.db")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer db.Close()
+	db.InitDB()
+	database := db.GetDB()
+	defer db.CloseDB()
 
 	// マイグレーションを実行してテーブルを作成
-	db.AutoMigrate(&model.Todo{})
-	db.AutoMigrate(&model.MyCommit{}) //これがそのままテーブル名になる
-	db.AutoMigrate(&model.ContributionDayDB{})
+	database.AutoMigrate(&model.Todo{})
+	database.AutoMigrate(&model.MyCommit{}) //これがそのままテーブル名になる
+	database.AutoMigrate(&model.ContributionDayDB{})
+	database.AutoMigrate(&model.TaskResult{})
 
 	go func() {
 		// サーバー起動後、初回のフェッチは遅延させる
@@ -140,7 +78,7 @@ func main() {
 	}()
 
 	// ハンドラーの初期化
-	handler.Init(db)
+	handler.Init(database)
 
 	// ルーターのセットアップ
 	r := router.NewRouter()

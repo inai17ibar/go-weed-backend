@@ -87,3 +87,10 @@ func ConvertToDBModels(days []ContributionDay) []ContributionDayDB {
 
 	return daysDB
 }
+
+// タスクの結果を保存するためのモデル
+type TaskResult struct {
+	ID     string `gorm:"primary_key"`
+	Status string // "in-progress", "success", "failure" など
+	Result string // タスクの結果やエラーメッセージ
+}
