@@ -49,6 +49,13 @@ func AddTodo(w http.ResponseWriter, r *http.Request) {
 	todo.Created_Date = currentDate.Format("2006-01-02")
 
 	db.Create(&todo)
+
+	// Debug: Check the content of todo after insertion
+	fmt.Printf("After insertion: %+v\n", todo)
+
+	// 新しいTodoの情報をJSONとしてレスポンスとして返す
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(todo)
 }
 
 func DeleteTodo(w http.ResponseWriter, r *http.Request) {
@@ -103,6 +110,10 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 
 	db.Save(&todo)
 	fmt.Fprintln(w, "TODO item updated successfully")
+
+	// Update後のTodoの情報をJSONとしてレスポンスとして返す
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(todo)
 }
 
 func GetTodosByDate(w http.ResponseWriter, r *http.Request) {
