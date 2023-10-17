@@ -97,6 +97,7 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	var updateData struct {
 		Title     string `json:"Title"`
 		Completed bool   `json:"Completed"`
+		Favorite  bool   `json:"Favorite"`
 	}
 	err := json.NewDecoder(r.Body).Decode(&updateData)
 	if err != nil {
@@ -107,6 +108,7 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 
 	todo.Title = updateData.Title
 	todo.Completed = updateData.Completed
+	todo.Favorite = updateData.Favorite
 
 	db.Save(&todo)
 	fmt.Fprintln(w, "TODO item updated successfully")

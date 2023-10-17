@@ -10,6 +10,7 @@ type Todo struct {
 	gorm.Model
 	Title        string `json:"Title"`
 	Completed    bool   `json:"Completed"`
+	Favorite     bool   `json:"Favorite"`
 	Created_Date string `json:"Created_date"`
 }
 
