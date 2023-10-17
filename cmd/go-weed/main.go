@@ -14,7 +14,51 @@ import (
 	"time"
 
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
+	_ "github.com/mattn/go-sqlite3"
 )
+
+func ConnectS3AWS() string {
+	// AWSセッションの設定
+	sess := session.Must(session.NewSessionWithOptions(session.Options{
+		Config: aws.Config{
+			Region: aws.String("us-east-1"), // リージョンを指定
+		},
+		Profile: "myprofile-inai17ibar", // ここに使用したいプロファイル名を指定
+	}))
+	// S3クライアントの作成
+	s3Client := s3.New(sess)
+
+	// S3バケットとファイルの情報
+	bucketName := "todo-weed"
+	fileKey := "database/todos.db"
+
+	// S3からデータベースファイルをダウンロード
+	downloadedFile, err := s3Client.GetObject(&s3.GetObjectInput{
+		Bucket: aws.String(bucketName),
+		Key:    aws.String(fileKey),
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer downloadedFile.Body.Close()
+
+	// ダウンロードしたデータベースファイルをローカルに保存
+	localDBPath := "local-database.db"
+	fileData, err := ioutil.ReadAll(downloadedFile.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = ioutil.WriteFile(localDBPath, fileData, 0644)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	return localDBPath
+}
 
 // Config は設定の構造体です。
 type Config struct {
@@ -60,8 +104,10 @@ func main() {
 		log.Fatalf("Failed to load configuration: %s", err)
 	}
 
+	localDBPath := ConnectS3AWS()
+
 	// データベースに接続
-	db.InitDB()
+	db.InitDB(localDBPath)
 	database := db.GetDB()
 	defer db.CloseDB()
 
@@ -73,7 +119,7 @@ func main() {
 
 	go func() {
 		// サーバー起動後、初回のフェッチは遅延させる
-		time.Sleep(10 * time.Minute) //もっといい書き方を考えたい、別プログラムとか
+		time.Sleep(30 * time.Minute) //もっといい書き方を考えたい、別プログラムとか
 		fetchCommitsPeriodically()
 	}()
 

@@ -10,9 +10,9 @@ import (
 
 var instance *gorm.DB
 
-func InitDB() {
+func InitDB(localDBPath string) {
 	var err error
-	instance, err = gorm.Open("sqlite3", "todos.db")
+	instance, err = gorm.Open("sqlite3", localDBPath)
 	if err != nil {
 		log.Fatal(err)
 	}
