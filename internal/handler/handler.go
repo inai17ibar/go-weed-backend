@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"bytes"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"sort"
@@ -9,6 +11,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 
@@ -19,9 +23,19 @@ import (
 // dbはデータベースへの参照を保持します。
 // 実際のプロジェクトでは、データベースへのアクセス方法をより適切に構造化することが重要です。
 var db *gorm.DB
+var svc *s3.S3
+var bucketName string
+var fileKey string
 
 // Initはhandlerパッケージを初期化します。
-func Init(database *gorm.DB) {
+func Init(database *gorm.DB, s3Service *s3.S3, bName string, fKey string) {
+	db = database
+	svc = s3Service
+	bucketName = bName
+	fileKey = fKey
+}
+
+func InitForTest(database *gorm.DB) {
 	db = database
 }
 
@@ -51,11 +65,35 @@ func AddTodo(w http.ResponseWriter, r *http.Request) {
 	db.Create(&todo)
 
 	// Debug: Check the content of todo after insertion
-	fmt.Printf("After insertion: %+v\n", todo)
+	//fmt.Printf("After insertion: %+v\n", todo)
 
 	// 新しいTodoの情報をJSONとしてレスポンスとして返す
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(todo)
+
+	// S3にデータをアップロード
+	// if err := uploadTodoToS3(todo); err != nil {
+	// 	// エラーハンドリングを行う（例: ログにエラーメッセージを出力）
+	// 	log.Printf("Error uploading todo to S3: %v", err)
+	// }
+}
+
+func uploadTodoToS3(todo model.Todo) error {
+	// データベースファイルを読み込み
+	databaseBytes, err := ioutil.ReadFile("local-database.db")
+	if err != nil {
+		return err
+	}
+
+	// データベースファイルをS3にアップロード
+	_, err = svc.PutObject(&s3.PutObjectInput{ //空になる可能性がある。エラーハンドリングできていないかも
+		Bucket:        aws.String(bucketName),
+		Key:           aws.String(fileKey),
+		Body:          bytes.NewReader(databaseBytes),       // バイナリデータを指定
+		ContentLength: aws.Int64(int64(len(databaseBytes))), // データの長さを指定
+	})
+
+	return err
 }
 
 func DeleteTodo(w http.ResponseWriter, r *http.Request) {
@@ -76,6 +114,12 @@ func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 
 	db.Delete(&todo)
 	fmt.Fprintln(w, "TODO item deleted successfully")
+
+	// S3にデータをアップロード
+	if err := uploadTodoToS3(todo); err != nil {
+		// エラーハンドリングを行う（例: ログにエラーメッセージを出力）
+		log.Printf("Error uploading todo to S3: %v", err)
+	}
 }
 
 func UpdateTodo(w http.ResponseWriter, r *http.Request) {
@@ -116,6 +160,12 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 	// Update後のTodoの情報をJSONとしてレスポンスとして返す
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(todo)
+
+	// S3にデータをアップロード
+	if err := uploadTodoToS3(todo); err != nil {
+		// エラーハンドリングを行う（例: ログにエラーメッセージを出力）
+		log.Printf("Error uploading todo to S3: %v", err)
+	}
 }
 
 func GetTodosByDate(w http.ResponseWriter, r *http.Request) {

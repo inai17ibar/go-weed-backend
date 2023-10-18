@@ -14,8 +14,6 @@ import (
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
-//var db *gorm.DB
-
 func TestGetTodos(t *testing.T) {
 	// テスト用のデータベースをセットアップ
 	var cleanup func()
@@ -23,7 +21,7 @@ func TestGetTodos(t *testing.T) {
 	defer cleanup()
 
 	// ハンドラの初期化
-	Init(db) // 追加
+	InitForTest(db) // 追加
 
 	// テスト用のダミーTODOデータを挿入
 	createDummyTodoData()
