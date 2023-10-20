@@ -23,5 +23,6 @@ jobs:
 
     - name: Build, tag, and push images to Amazon ECR
       run: |
+        export IMAGE_TAG=${{ github.sha }}
         docker-compose build
         docker-compose push
