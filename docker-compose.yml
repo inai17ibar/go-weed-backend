@@ -1,0 +1,11 @@
+version: '3'
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./todos.db:/weed-app/go-weed-backend/todos.db
+    ports:
+      - "8081:8081"
