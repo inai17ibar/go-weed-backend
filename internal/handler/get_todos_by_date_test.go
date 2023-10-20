@@ -15,7 +15,7 @@ func TestGetTodosByDate(t *testing.T) {
 	db, cleanup := setupTestDatabase()
 	defer cleanup()
 
-	InitForTest(db)
+	Init(db)
 
 	date := "2023-09-01"
 	dummyTodo := model.Todo{Title: "Task 1", Completed: false, Created_Date: date}

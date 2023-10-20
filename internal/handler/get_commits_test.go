@@ -20,7 +20,7 @@ func TestGetCommits(t *testing.T) {
 	defer cleanup()
 
 	// ハンドラの初期化
-	InitForTest(db) // 追加
+	Init(db) // 追加
 
 	// テスト用のダミーTODOデータを挿入
 	createDummyCommitsData()

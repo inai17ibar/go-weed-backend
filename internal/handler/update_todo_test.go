@@ -17,7 +17,7 @@ func TestUpdateTodo(t *testing.T) {
 	db, cleanup := setupTestDatabase()
 	defer cleanup()
 
-	InitForTest(db)
+	Init(db)
 
 	// ダミーデータの作成
 	dummyTodo := model.Todo{Title: "Task to Update", Completed: false}

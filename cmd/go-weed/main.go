@@ -6,7 +6,6 @@ import (
 	"go-weed-backend/db"
 	"go-weed-backend/internal/handler"
 	"go-weed-backend/internal/model"
-	"go-weed-backend/internal/util"
 	"go-weed-backend/router"
 	"io/ioutil"
 	"log"
@@ -63,8 +62,9 @@ func main() {
 		log.Fatalf("Failed to load configuration: %s", err)
 	}
 
-	localDBPath, s3Client, bucketName, fileKey := util.ConnectS3AWS()
+	//localDBPath, s3Client, bucketName, fileKey := util.ConnectS3AWS()
 
+	localDBPath := "todos.db"
 	// データベースに接続
 	db.InitDB(localDBPath)
 	database := db.GetDB()
@@ -83,7 +83,7 @@ func main() {
 	}()
 
 	// ハンドラーの初期化
-	handler.Init(database, s3Client, bucketName, fileKey)
+	handler.Init(database)
 
 	// ルーターのセットアップ
 	r := router.NewRouter()

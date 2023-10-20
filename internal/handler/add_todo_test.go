@@ -18,7 +18,7 @@ func TestAddTodo(t *testing.T) {
 	defer cleanup()
 
 	// ハンドラの初期化
-	InitForTest(db)
+	Init(db)
 
 	// テスト用のHTTPリクエストを作成
 	todo := model.Todo{Title: "Task 1", Completed: false}
