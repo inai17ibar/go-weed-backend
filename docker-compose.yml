@@ -5,7 +5,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
-    image: 998159020507.dkr.ecr.us-east-1.amazonaws.com/todo-weed-repository/backend:$IMAGE_TAG
+    image: inai17ibar/go-weed-backend:latest
     volumes:
       - ./todos.db:/weed-app/go-weed-backend/todos.db
     ports:
