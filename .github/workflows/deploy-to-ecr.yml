@@ -18,6 +18,7 @@ jobs:
         AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
         AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
         AWS_DEFAULT_REGION: us-east-1
+        ECR_REGISTRY: 998159020507.dkr.ecr.us-east-1.amazonaws.com
       run: |
         echo $(aws ecr get-login-password) | docker login --username AWS --password-stdin $ECR_REGISTRY
     
