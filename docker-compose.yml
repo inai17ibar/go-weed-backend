@@ -10,3 +10,8 @@ services:
       - ./todos.db:/weed-app/go-weed-backend/todos.db
     ports:
       - "8081:8081"
+
+  mongodb:
+    image: mongo:latest
+    ports:
+      - "27017:27017"

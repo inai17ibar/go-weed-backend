@@ -9,34 +9,32 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"context"
 
+	"go-weed-backend/db"
 	"go-weed-backend/internal/model"
 	"go-weed-backend/internal/util"
+
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// dbはデータベースへの参照を保持します。
-// 実際のプロジェクトでは、データベースへのアクセス方法をより適切に構造化することが重要です。
-var db *gorm.DB
-
-// var svc *s3.S3
-// var bucketName string
-// var fileKey string
-
-// Initはhandlerパッケージを初期化します。
-func Init(database *gorm.DB) {
-	db = database
-	// svc = s3Service
-	// bucketName = bName
-	// fileKey = fKey
-}
-
 func GetTodos(w http.ResponseWriter, r *http.Request) {
-	var todos []model.Todo
-	db.Find(&todos)
+	collection := db.GetDB().Collection("todos")
 
-	// JSONデータとしてクライアントに返す
+	cur, err := collection.Find(context.TODO(), bson.M{})
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer cur.Close(context.TODO())
+
+	var todos []model.Todo
+	if err = cur.All(context.TODO(), &todos); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(todos); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -47,75 +45,75 @@ func GetTodos(w http.ResponseWriter, r *http.Request) {
 func AddTodo(w http.ResponseWriter, r *http.Request) {
 	var todo model.Todo
 	decoder := json.NewDecoder(r.Body)
+
+	//fmt.Println("AddTodo: Decoding request body")
 	if err := decoder.Decode(&todo); err != nil {
+		fmt.Println("Error decoding todo:", err)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	//fmt.Println("AddTodo: Successfully decoded request body")
 
 	currentDate := util.ConvertToJapanTime(time.Now()).Truncate(24 * time.Hour)
 	todo.Created_Date = currentDate.Format("2006-01-02")
 
-	db.Create(&todo)
+	//fmt.Println("AddTodo: Connecting to DB")
+	collection := db.GetDB().Collection("todos")
 
-	// Debug: Check the content of todo after insertion
-	//fmt.Printf("After insertion: %+v\n", todo)
+	//fmt.Println("AddTodo: Inserting data into DB")
+	_, err := collection.InsertOne(context.TODO(), todo) //add todo to DB
+	if err != nil {
+		fmt.Println("Error inserting todo:", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
 	// 新しいTodoの情報をJSONとしてレスポンスとして返す
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(todo)
 }
 
-// func uploadTodoToS3(todo model.Todo) error {
-// 	// データベースファイルを読み込み
-// 	databaseBytes, err := ioutil.ReadFile("local-database.db")
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// データベースファイルをS3にアップロード
-// 	_, err = svc.PutObject(&s3.PutObjectInput{ //空になる可能性がある。エラーハンドリングできていないかも
-// 		Bucket:        aws.String(bucketName),
-// 		Key:           aws.String(fileKey),
-// 		Body:          bytes.NewReader(databaseBytes),       // バイナリデータを指定
-// 		ContentLength: aws.Int64(int64(len(databaseBytes))), // データの長さを指定
-// 	})
-
-// 	return err
-// }
-
 func DeleteTodo(w http.ResponseWriter, r *http.Request) {
-	todoID := r.URL.Query().Get("ID")
-	if todoID == "" {
+	todoIDStr := r.URL.Query().Get("ID")
+	fmt.Printf("Received ID: %s\n", todoIDStr)
+	if todoIDStr == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "Missing ID parameter")
 		return
 	}
 
-	var todo model.Todo
-	db.First(&todo, todoID)
-	if todo.ID == 0 {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintln(w, "TODO item not found")
+	// 文字列からObjectIDへの変換
+	todoID, err := primitive.ObjectIDFromHex(todoIDStr)
+	if err != nil {
+		fmt.Printf("Error in ObjectIDFromHex: %v\n", err)
+		http.Error(w, "Invalid ID format", http.StatusBadRequest)
 		return
 	}
+	//fmt.Printf("Received ID in DeleteTodo: %s", todoIDStr)
+	//fmt.Printf("Converted ObjectID: %v", todoID)
 
-	db.Delete(&todo)
+	collection := db.GetDB().Collection("todos")
+	filter := bson.M{"_id": todoID}
+	_, err = collection.DeleteOne(context.TODO(), filter) //delete todo from DB
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 	fmt.Fprintln(w, "TODO item deleted successfully")
 }
 
 func UpdateTodo(w http.ResponseWriter, r *http.Request) {
-	todoID := r.URL.Query().Get("ID")
-	if todoID == "" {
+	todoIDStr := r.URL.Query().Get("ID")
+	if todoIDStr == "" {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "Missing ID parameter")
 		return
 	}
 
-	var todo model.Todo
-	db.First(&todo, todoID)
-	if todo.ID == 0 {
-		w.WriteHeader(http.StatusNotFound)
-		fmt.Fprintln(w, "TODO item not found")
+	// 文字列からObjectIDへの変換
+	todoID, err := primitive.ObjectIDFromHex(todoIDStr)
+	if err != nil {
+		http.Error(w, "Invalid ID format", http.StatusBadRequest)
 		return
 	}
 
@@ -124,45 +122,108 @@ func UpdateTodo(w http.ResponseWriter, r *http.Request) {
 		Completed bool   `json:"Completed"`
 		Favorite  bool   `json:"Favorite"`
 	}
-	err := json.NewDecoder(r.Body).Decode(&updateData)
+	err = json.NewDecoder(r.Body).Decode(&updateData)
 	if err != nil {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(w, "Invalid request body")
 		return
 	}
 
-	todo.Title = updateData.Title
-	todo.Completed = updateData.Completed
-	todo.Favorite = updateData.Favorite
-
-	db.Save(&todo)
-	fmt.Fprintln(w, "TODO item updated successfully")
-
-	// Update後のTodoの情報をJSONとしてレスポンスとして返す
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(todo)
-}
-
-func GetTodosByDate(w http.ResponseWriter, r *http.Request) {
-	date := r.URL.Query().Get("Created_date")
-	if date == "" {
-		w.WriteHeader(http.StatusBadRequest)
-		fmt.Fprintln(w, "Missing 'Created_date' parameter in the request")
+	collection := db.GetDB().Collection("todos")
+	filter := bson.M{"_id": todoID}
+	update := bson.M{
+		"$set": bson.M{
+			"Title":     updateData.Title,
+			"Completed": updateData.Completed,
+			"Favorite":  updateData.Favorite,
+		},
+	}
+	_, err = collection.UpdateOne(context.TODO(), filter, update)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	var todos []model.Todo
-	db.Where("created_date = ?", date).Find(&todos)
+	fmt.Fprintln(w, "TODO item updated successfully")
+	// Update後のTodoの情報をJSONとしてレスポンスとして返す
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(updateData)
+}
 
-	// TODOリストをJSON形式で返す
+func GetTodosByDate(w http.ResponseWriter, r *http.Request) {
+	date := r.URL.Query().Get("Created_Date")
+	if date == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprintln(w, "Missing 'Created_Date' parameter in the request")
+		return
+	}
+
+	collection := db.GetDB().Collection("todos")
+
+	filter := bson.M{"Created_Date": date}
+	cur, err := collection.Find(context.TODO(), filter)
+	if err != nil {
+		log.Printf("Error finding TODOs by date: %v", err) // Add detailed logging
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintln(w, "Cannot find TODOs by date")
+		return
+	}
+	defer cur.Close(context.TODO()) // Move this right after checking the error
+
+	todos := make([]model.Todo, 0)
+	for cur.Next(context.TODO()) {
+		var todo model.Todo
+		if err := cur.Decode(&todo); err != nil {
+			log.Printf("Error decoding todo from database: %v", err) // Add detailed logging
+			w.WriteHeader(http.StatusInternalServerError)
+			fmt.Fprintln(w, "Error decoding todo from database")
+			return
+		}
+		todos = append(todos, todo)
+	}
+
+	if err := cur.Err(); err != nil {
+		log.Printf("Cursor iteration error: %v", err) // Add detailed logging
+		w.WriteHeader(http.StatusInternalServerError)
+		fmt.Fprintln(w, "Cursor iteration error")
+		return
+	}
+
+	// If no todos found with the given date
+	if len(todos) == 0 {
+		log.Println("No data found with the given filter")
+	}
+
+	// Send TODO list in JSON format
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(todos)
 }
 
 func AggregateCommitDataByDate(w http.ResponseWriter, r *http.Request) {
+	collection := db.GetDB().Collection("commits")
+	cur, err := collection.Find(context.TODO(), bson.M{})
+	if err != nil {
+		http.Error(w, "Error fetching commits from database: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+	defer cur.Close(context.TODO())
+
+	//MongoDBのGoドライバのcollection.Find()メソッドは、
+	//マッチするドキュメントのカーソルを返します。このカーソル(cur変数)を使用して、結果セットをイテレートし、取得したドキュメントをGoの構造体にデコードすることができます。
 	var commits []model.MyCommit
-	if err := db.Find(&commits).Error; err != nil {
-		log.Fatalf("Failed to get commits from database: %v", err)
+	for cur.Next(context.TODO()) {
+		var commit model.MyCommit
+		err := cur.Decode(&commit)
+		if err != nil {
+			log.Println("Error decoding commit:", err)
+			continue
+		}
+		commits = append(commits, commit)
+	}
+
+	if err := cur.Err(); err != nil {
+		http.Error(w, "Cursor error: "+err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	commitDataByDate := make(map[string]*model.CommitData)

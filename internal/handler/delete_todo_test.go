@@ -1,28 +1,34 @@
 package handler
 
 import (
-	"fmt"
+	"context"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"go-weed-backend/internal/model"
 
-	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func TestDeleteTodo(t *testing.T) {
-	db, cleanup := setupTestDatabase()
+	client, cleanup := setupTestDatabase()
 	defer cleanup()
 
-	Init(db)
-
 	// ダミーデータの作成
-	dummyTodo := model.Todo{Title: "Task to Delete", Completed: false}
-	db.Create(&dummyTodo)
+	dummyTodo := model.Todo{ID: primitive.NewObjectID(), Title: "Task to Delete", Completed: false}
+	collection := client.Database("testDB").Collection("todos")
+	insertResult, err := collection.InsertOne(context.TODO(), dummyTodo)
+	if err != nil {
+		log.Fatalf("Failed to insert dummy todo: %v", err)
+	}
+	log.Print("insertResult: ", insertResult)
 
-	req := httptest.NewRequest("DELETE", "/todos/delete?ID="+fmt.Sprint(dummyTodo.ID), nil)
+	req := httptest.NewRequest("DELETE", "/todos/delete?ID="+insertResult.InsertedID.(primitive.ObjectID).Hex(), nil)
 	w := httptest.NewRecorder()
 
 	DeleteTodo(w, req)
@@ -35,9 +41,14 @@ func TestDeleteTodo(t *testing.T) {
 
 	// DBからデータを取得し、データが存在しないことを確認
 	var todo model.Todo
-	if err := db.First(&todo, dummyTodo.ID).Error; err == nil {
+	err = collection.FindOne(context.TODO(), bson.M{"_id": insertResult.InsertedID}).Decode(&todo)
+	// エラーがない場合、つまりドキュメントが見つかった場合
+	if err == nil {
 		t.Errorf("Expected todo to be deleted, but was found in db")
-	} else if !gorm.IsRecordNotFoundError(err) {
+		return
+	}
+	// mongo.ErrNoDocuments以外のエラーが発生した場合
+	if err != mongo.ErrNoDocuments {
 		t.Errorf("Unexpected error occurred: %v", err)
 	}
 }

@@ -1,17 +1,21 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"go-weed-backend/api"
+	"go-weed-backend/db"
 	"go-weed-backend/internal/model"
 	"net/http"
+	"time"
 
-	"github.com/google/uuid"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 func generateUniqueTaskID() string {
-	return uuid.New().String()
+	return fmt.Sprintf("%d", time.Now().UnixNano())
 }
 
 func FetchAndSaveHandler(w http.ResponseWriter, r *http.Request) {
@@ -20,10 +24,17 @@ func FetchAndSaveHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	collection := db.GetDB().Collection("tasks")
+
 	// 新しいタスクの結果のレコードを作成
-	taskID := generateUniqueTaskID() // 一意のタスクIDを生成する関数
+	taskID := generateUniqueTaskID()
 	task := model.TaskResult{ID: taskID, Status: "in-progress"}
-	db.Create(&task)
+
+	_, err := collection.InsertOne(context.TODO(), task)
+	if err != nil {
+		http.Error(w, "Failed to insert task", http.StatusInternalServerError)
+		return
+	}
 
 	go func() {
 		defer func() {
@@ -31,7 +42,7 @@ func FetchAndSaveHandler(w http.ResponseWriter, r *http.Request) {
 				// エラーハンドリング
 				task.Status = "failure"
 				task.Result = fmt.Sprintf("An error occurred: %v", r)
-				db.Save(&task)
+				collection.UpdateOne(context.TODO(), bson.M{"_id": taskID}, bson.M{"$set": task})
 			}
 		}()
 
@@ -39,14 +50,13 @@ func FetchAndSaveHandler(w http.ResponseWriter, r *http.Request) {
 		api.FetchAndSaveContribution()
 
 		task.Status = "success"
-		db.Save(&task)
+		collection.UpdateOne(context.TODO(), bson.M{"_id": taskID}, bson.M{"$set": task})
 	}()
 
-	w.WriteHeader(http.StatusAccepted) // 202 Accepted: 要求は受け入れられたが、処理はまだ完了していないことを示す
-	w.Write([]byte(taskID))            // タスクのIDをクライアントに返す
+	w.WriteHeader(http.StatusAccepted)
+	w.Write([]byte(taskID))
 }
 
-// タスクの結果を確認するためのハンドラ
 func CheckTaskResultHandler(w http.ResponseWriter, r *http.Request) {
 	taskID := r.URL.Query().Get("taskID")
 	if taskID == "" {
@@ -54,14 +64,18 @@ func CheckTaskResultHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var task model.TaskResult
-	db.Where("id = ?", taskID).First(&task)
+	collection := db.GetDB().Collection("tasks")
 
-	if task.Status == "" {
-		http.Error(w, "Task not found", http.StatusNotFound)
+	var task model.TaskResult
+	err := collection.FindOne(context.TODO(), bson.M{"_id": taskID}).Decode(&task)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			http.Error(w, "Task not found", http.StatusNotFound)
+			return
+		}
+		http.Error(w, "Failed to fetch task", http.StatusInternalServerError)
 		return
 	}
 
-	// タスクの結果をJSONとして返す
 	json.NewEncoder(w).Encode(task)
 }

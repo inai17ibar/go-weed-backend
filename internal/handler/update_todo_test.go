@@ -2,8 +2,8 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
-	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -11,17 +11,23 @@ import (
 	"go-weed-backend/internal/model"
 
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestUpdateTodo(t *testing.T) {
-	db, cleanup := setupTestDatabase()
+	// テスト用のデータベースをセットアップ
+	client, cleanup := setupTestDatabase()
 	defer cleanup()
 
-	Init(db)
+	collection := client.Database("testDB").Collection("todos")
 
 	// ダミーデータの作成
-	dummyTodo := model.Todo{Title: "Task to Update", Completed: false}
-	db.Create(&dummyTodo)
+	dummyTodo := model.Todo{ID: primitive.NewObjectID(), Title: "Task to Update", Completed: false}
+	_, err := collection.InsertOne(context.TODO(), dummyTodo)
+	if err != nil {
+		t.Fatalf("Failed to insert dummy todo: %v", err)
+	}
 
 	// 変更内容
 	updateData := struct {
@@ -34,7 +40,7 @@ func TestUpdateTodo(t *testing.T) {
 	body, _ := json.Marshal(updateData)
 
 	// リクエストの作成
-	req := httptest.NewRequest("PUT", "/todos/update?ID="+fmt.Sprint(dummyTodo.ID), bytes.NewBuffer(body))
+	req := httptest.NewRequest("PUT", "/todos/update?ID="+dummyTodo.ID.Hex(), bytes.NewBuffer(body))
 	w := httptest.NewRecorder()
 
 	// ハンドラの呼び出し
@@ -48,9 +54,12 @@ func TestUpdateTodo(t *testing.T) {
 		t.Errorf("Expected status code %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
-	// DBからデータを取得し、更新されているか確認
+	// MongoDBからデータを取得し、更新されているか確認
 	var updatedTodo model.Todo
-	db.First(&updatedTodo, dummyTodo.ID)
+	err = collection.FindOne(context.TODO(), bson.M{"_id": dummyTodo.ID}).Decode(&updatedTodo)
+	if err != nil {
+		t.Fatalf("Failed to fetch updated todo: %v", err)
+	}
 
 	if updatedTodo.Title != updateData.Title || updatedTodo.Completed != updateData.Completed {
 		t.Errorf("Updated todo does not match expected values. Got: %+v", updatedTodo)

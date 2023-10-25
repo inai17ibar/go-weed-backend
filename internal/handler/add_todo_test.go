@@ -2,44 +2,57 @@ package handler
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"go-weed-backend/internal/model"
 
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 func TestAddTodo(t *testing.T) {
+	//fmt.Println("Starting TestAddTodo")
 	// テスト用のデータベースをセットアップ
-	db, cleanup := setupTestDatabase()
+	client, cleanup := setupTestDatabase()
 	defer cleanup()
 
-	// ハンドラの初期化
-	Init(db)
-
 	// テスト用のHTTPリクエストを作成
-	todo := model.Todo{Title: "Task 1", Completed: false}
+	//fmt.Println("Create todo")
+	todo := model.Todo{ID: primitive.NewObjectID(), Title: "Task 1", Completed: false}
 	body, _ := json.Marshal(todo)
 	req := httptest.NewRequest("POST", "/addTodo", bytes.NewBuffer(body))
 	w := httptest.NewRecorder()
 
+	//fmt.Println("Before calling AddTodo")
 	// ハンドラ関数を呼び出し
 	AddTodo(w, req)
+	//fmt.Println("After calling AddTodo")
 
 	// HTTPレスポンスを取得
 	resp := w.Result()
 
 	// レスポンスのステータスコードを確認
+	//fmt.Println("Checking response")
 	if resp.StatusCode != http.StatusOK {
+		t.Logf("Request: %+v", req)
 		t.Errorf("Expected status code %d, got %d", http.StatusOK, resp.StatusCode)
 	}
 
-	// DBからデータを取得し、期待するデータが存在するか確認
+	//fmt.Println("Fetching data from MongoDB")
+	// MongoDBからデータを取得し、期待するデータが存在するか確認
+	collection := client.Database("testDB").Collection("todos")
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
 	var todos []model.Todo
-	db.Find(&todos)
+	cursor, _ := collection.Find(ctx, bson.M{})
+	cursor.All(ctx, &todos)
 
 	if len(todos) != 1 {
 		t.Errorf("Expected 1 todo to be added, got %d", len(todos))

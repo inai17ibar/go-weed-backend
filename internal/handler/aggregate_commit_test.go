@@ -9,17 +9,12 @@ import (
 )
 
 func TestAggregateCommitDataByDate(t *testing.T) {
-
 	// テスト用のデータベースをセットアップ
-	var cleanup func()
-	db, cleanup = setupTestCommitsDatabase()
+	client, cleanup := setupTestCommitsDatabase()
 	defer cleanup()
 
-	// ハンドラの初期化
-	Init(db) // 追加
-
 	// テスト用のダミーTODOデータを挿入
-	createDummyCommitsData()
+	createDummyCommitsData(client)
 
 	// テスト用のHTTPリクエストを作成
 	req := httptest.NewRequest("GET", "/commitDataByDate", nil)
@@ -58,53 +53,3 @@ func TestAggregateCommitDataByDate(t *testing.T) {
 	// クリーンアップ
 	resp.Body.Close()
 }
-
-// // テスト用のデータベースセットアップ
-// func setupTestCommitDataDatabase() (*gorm.DB, func()) {
-// 	var err error
-// 	db, err = gorm.Open("sqlite3", "test.db") // テスト用のSQLiteデータベースを使用
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-
-// 	// マイグレーションを実行してテーブルを作成
-// 	db.AutoMigrate(&model.CommitData{})
-
-// 	// クリーンアップ用の関数を返す
-// 	cleanup := func() {
-// 		db.Close()
-// 		if err := os.Remove("test.db"); err != nil {
-// 			log.Printf("Failed to remove test database file: %v", err)
-// 		}
-// 	}
-
-// 	return db, cleanup
-// }
-
-// // ダミーのTODOデータを作成しデータベースに挿入
-// func createDummyCommitDataByDate() {
-// 	dummyData := map[string]model.CommitData{
-// 		"2023-10-01": {
-// 			Count:     5,
-// 			Additions: 50,
-// 			Deletions: 20,
-// 			Total:     70,
-// 		},
-// 		"2023-10-02": {
-// 			Count:     3,
-// 			Additions: 30,
-// 			Deletions: 10,
-// 			Total:     40,
-// 		},
-// 		"2023-10-03": {
-// 			Count:     2,
-// 			Additions: 20,
-// 			Deletions: 5,
-// 			Total:     25,
-// 		},
-// 	}
-
-// 	for _, commitData := range dummyData {
-// 		db.Create(&commitData)
-// 	}
-// }

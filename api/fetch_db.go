@@ -1,19 +1,28 @@
 package api
 
 import (
+	"context"
 	"go-weed-backend/db"
 	"go-weed-backend/internal/model"
 	"log"
 
-	"github.com/jinzhu/gorm"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func FetchAndSaveContribution() {
-	dbInstance := db.GetDB() // この変数を以下のコードで利用
+	client := db.GetDB()                             // MongoDB client
+	collection := client.Collection("contributions") // 対応するコレクションを取得
 
 	// 最後のコントリビューションの日付を取得
 	var lastContribution model.ContributionDayDB
-	dbInstance.Order("date desc").First(&lastContribution)
+	opts := options.FindOne().SetSort(bson.D{{Key: "date", Value: -1}})
+	err := collection.FindOne(context.TODO(), bson.D{}, opts).Decode(&lastContribution)
+	if err != nil && err != mongo.ErrNoDocuments {
+		log.Printf("error querying last contribution date: %v\n", err)
+		return
+	}
 
 	respData, err := CallGithubContributionAPI()
 	if err != nil {
@@ -29,31 +38,29 @@ func FetchAndSaveContribution() {
 	contributionDaysDB := model.ConvertToDBModels(contributions)
 
 	for _, c := range contributionDaysDB {
-		existingData := model.ContributionDayDB{}
-		if err := dbInstance.Where("date = ?", c.Date).First(&existingData).Error; err != nil {
-			if err == gorm.ErrRecordNotFound {
-				if err := dbInstance.Create(&c).Error; err != nil {
-					log.Printf("error creating contribution: %v\n", err)
-				}
-			} else {
-				log.Printf("error querying contribution: %v\n", err)
-			}
-		} else {
-			if err := dbInstance.Model(&existingData).Updates(&c).Error; err != nil {
-				log.Printf("error updating contribution: %v\n", err)
-			}
+		filter := bson.M{"date": c.Date}
+		update := bson.M{"$set": &c}
+		opts := options.Update().SetUpsert(true) // Upsertオプションを使って、存在しない場合は新しく挿入する
+
+		_, err := collection.UpdateOne(context.TODO(), filter, update, opts)
+		if err != nil {
+			log.Printf("error updating/creating contribution: %v\n", err)
 		}
 	}
 }
 
 func FetchAndSaveCommits() {
-	dbInstance := db.GetDB() // この変数を以下のコードで利用
+	client := db.GetDB()                       // MongoDB client
+	collection := client.Collection("commits") // 対応するコレクションを取得
 
 	// 最後のコミットの日付を取得
 	var lastCommit model.MyCommit
-	dbInstance.Order("date desc").First(&lastCommit)
-
-	var commits []model.MyCommit
+	opts := options.FindOne().SetSort(bson.D{{Key: "date", Value: -1}})
+	err := collection.FindOne(context.TODO(), bson.D{}, opts).Decode(&lastCommit)
+	if err != nil && err != mongo.ErrNoDocuments {
+		log.Printf("error querying last commit date: %v\n", err)
+		return
+	}
 
 	commits, err := CallGithubAllCommitAPI()
 	if err != nil {
@@ -62,7 +69,10 @@ func FetchAndSaveCommits() {
 
 	for _, c := range commits {
 		if c.Date.After(lastCommit.Date) {
-			dbInstance.Save(&c)
+			_, err := collection.InsertOne(context.TODO(), c)
+			if err != nil {
+				log.Printf("error inserting commit: %v\n", err)
+			}
 		}
 	}
 }

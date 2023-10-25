@@ -4,14 +4,15 @@ import (
 	"time"
 
 	"github.com/jinzhu/gorm"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type Todo struct {
-	gorm.Model
-	Title        string `json:"Title"`
-	Completed    bool   `json:"Completed"`
-	Favorite     bool   `json:"Favorite"`
-	Created_Date string `json:"Created_date"`
+type Todo struct { //GPTにまかせたら大文字小文字がめちゃくちゃになった
+	ID           primitive.ObjectID `bson:"_id"`
+	Title        string             `bson:"Title" json:"Title"`
+	Completed    bool               `bson:"Completed" json:"Completed"`
+	Favorite     bool               `bson:"Favorite" json:"Favorite"`
+	Created_Date string             `bson:"Created_Date" json:"Created_Date"`
 }
 
 type MyCommit struct {

@@ -2,36 +2,29 @@ package handler
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"testing"
 
 	"go-weed-backend/internal/model"
 
-	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/sqlite"
 )
 
 func TestGetTodos(t *testing.T) {
 	// テスト用のデータベースをセットアップ
-	var cleanup func()
-	db, cleanup = setupTestDatabase()
+	client, cleanup := setupTestDatabase()
 	defer cleanup()
 
-	// ハンドラの初期化
-	Init(db) // 追加
-
 	// テスト用のダミーTODOデータを挿入
-	createDummyTodoData()
+	createDummyTodoData(client)
 
 	// テスト用のHTTPリクエストを作成
 	req := httptest.NewRequest("GET", "/todos", nil)
 	w := httptest.NewRecorder()
 
 	// ハンドラ関数を呼び出し
-	GetTodos(w, req)
+	GetTodos(w, req) // この関数もMongoDB対応に変更する必要があります
 
 	// HTTPレスポンスを取得
 	resp := w.Result()
@@ -65,39 +58,4 @@ func TestGetTodos(t *testing.T) {
 
 	// クリーンアップ
 	resp.Body.Close()
-}
-
-// テスト用のデータベースセットアップ
-func setupTestDatabase() (*gorm.DB, func()) {
-	var err error
-	db, err = gorm.Open("sqlite3", "test.db") // テスト用のSQLiteデータベースを使用
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	// マイグレーションを実行してテーブルを作成
-	db.AutoMigrate(&model.Todo{})
-
-	// クリーンアップ用の関数を返す
-	cleanup := func() {
-		db.Close()
-		if err := os.Remove("test.db"); err != nil {
-			log.Printf("Failed to remove test database file: %v", err)
-		}
-	}
-
-	return db, cleanup
-}
-
-// ダミーのTODOデータを作成しデータベースに挿入
-func createDummyTodoData() {
-	dummyTodos := []model.Todo{
-		{Title: "Task 1", Completed: false, Created_Date: "2023-09-01"},
-		{Title: "Task 2", Completed: true, Created_Date: "2023-09-02"},
-		{Title: "Task 3", Completed: false, Created_Date: "2023-09-03"},
-	}
-
-	for _, todo := range dummyTodos {
-		db.Create(&todo)
-	}
 }

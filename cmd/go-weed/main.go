@@ -4,16 +4,12 @@ import (
 	"encoding/json"
 	"go-weed-backend/api"
 	"go-weed-backend/db"
-	"go-weed-backend/internal/handler"
-	"go-weed-backend/internal/model"
 	"go-weed-backend/router"
 	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
 	"time"
-
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
 
 	_ "github.com/mattn/go-sqlite3"
 )
@@ -62,28 +58,22 @@ func main() {
 		log.Fatalf("Failed to load configuration: %s", err)
 	}
 
-	//localDBPath, s3Client, bucketName, fileKey := util.ConnectS3AWS()
-
-	localDBPath := "todos.db"
-	// データベースに接続
-	db.InitDB(localDBPath)
-	database := db.GetDB()
+	// MongoDBに接続
+	dbName := "todo_weed_mongo"
+	db.InitDB(dbName) // この接続文字列はconfigから取得 config.MongoDBConnectionString
 	defer db.CloseDB()
 
 	// マイグレーションを実行してテーブルを作成
-	database.AutoMigrate(&model.Todo{})
-	database.AutoMigrate(&model.MyCommit{}) //これがそのままテーブル名になる
-	database.AutoMigrate(&model.ContributionDayDB{})
-	database.AutoMigrate(&model.TaskResult{})
+	db.EnsureCollectionExists(db.GetDB().Client(), dbName, "todos")
+	db.EnsureCollectionExists(db.GetDB().Client(), dbName, "mycommits")
+	db.EnsureCollectionExists(db.GetDB().Client(), dbName, "contributionDays")
+	db.EnsureCollectionExists(db.GetDB().Client(), dbName, "taskResults")
 
 	go func() {
 		// サーバー起動後、初回のフェッチは遅延させる
 		time.Sleep(30 * time.Minute) //もっといい書き方を考えたい、別プログラムとか
 		fetchCommitsPeriodically()
 	}()
-
-	// ハンドラーの初期化
-	handler.Init(database)
 
 	// ルーターのセットアップ
 	r := router.NewRouter()
