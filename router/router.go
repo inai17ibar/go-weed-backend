@@ -45,6 +45,8 @@ func NewRouter() http.Handler {
 	var configFilePath string
 	if env == "production" {
 		configFilePath = "config.production.json"
+	} else if env == "docker_local" {
+		configFilePath = "config.docker_local.json"
 	} else {
 		configFilePath = "config.local.json"
 	}

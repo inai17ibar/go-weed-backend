@@ -6,7 +6,34 @@ services:
       context: .
       dockerfile: Dockerfile
     image: inai17ibar/go-weed-backend:latest
-    volumes:
-      - ./todos.db:/weed-app/go-weed-backend/todos.db
     ports:
       - "8081:8081"
+    depends_on:
+      - mysql
+    environment:
+      APP_ENV: docker_local
+      DB_MYSQL_PASSWORD: ${DB_MYSQL_PASSWORD}
+      API_KEY_GITHUB: ${API_KEY_GITHUB}
+    networks:
+      - app-net
+
+  mysql:
+    image: mysql:latest
+    environment:
+      MYSQL_ROOT_PASSWORD: ${DB_MYSQL_PASSWORD}
+      MYSQL_DATABASE: todo_weed_mysql
+      MYSQL_USER: inai17ibar
+      MYSQL_PASSWORD: ${DB_MYSQL_PASSWORD}
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - app-net
+
+networks:
+  app-net:
+    driver: bridge
+
+volumes:
+  mysql-data:

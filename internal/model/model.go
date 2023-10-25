@@ -6,6 +6,17 @@ import (
 	"github.com/jinzhu/gorm"
 )
 
+// Config は設定の構造体です。
+type Config struct {
+	ServerPort string `json:"server_port"`
+	DBUser     string `json:"DBUser"`
+	DBPassword string `json:"DBPassword"` // このフィールドはもはや不要で、実際には環境変数から取得します
+	DBHost     string `json:"DBHost"`
+	DBPort     string `json:"DBPort"`
+	DBName     string `json:"DBName"`
+	// 他の設定も追加可能
+}
+
 type Todo struct {
 	gorm.Model
 	Title        string `json:"Title"`

@@ -20,16 +20,9 @@ import (
 // 実際のプロジェクトでは、データベースへのアクセス方法をより適切に構造化することが重要です。
 var db *gorm.DB
 
-// var svc *s3.S3
-// var bucketName string
-// var fileKey string
-
 // Initはhandlerパッケージを初期化します。
 func Init(database *gorm.DB) {
 	db = database
-	// svc = s3Service
-	// bucketName = bName
-	// fileKey = fKey
 }
 
 func GetTodos(w http.ResponseWriter, r *http.Request) {
@@ -57,31 +50,10 @@ func AddTodo(w http.ResponseWriter, r *http.Request) {
 
 	db.Create(&todo)
 
-	// Debug: Check the content of todo after insertion
-	//fmt.Printf("After insertion: %+v\n", todo)
-
 	// 新しいTodoの情報をJSONとしてレスポンスとして返す
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(todo)
 }
-
-// func uploadTodoToS3(todo model.Todo) error {
-// 	// データベースファイルを読み込み
-// 	databaseBytes, err := ioutil.ReadFile("local-database.db")
-// 	if err != nil {
-// 		return err
-// 	}
-
-// 	// データベースファイルをS3にアップロード
-// 	_, err = svc.PutObject(&s3.PutObjectInput{ //空になる可能性がある。エラーハンドリングできていないかも
-// 		Bucket:        aws.String(bucketName),
-// 		Key:           aws.String(fileKey),
-// 		Body:          bytes.NewReader(databaseBytes),       // バイナリデータを指定
-// 		ContentLength: aws.Int64(int64(len(databaseBytes))), // データの長さを指定
-// 	})
-
-// 	return err
-// }
 
 func DeleteTodo(w http.ResponseWriter, r *http.Request) {
 	todoID := r.URL.Query().Get("ID")

@@ -13,26 +13,19 @@ import (
 	"os"
 	"time"
 
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
-
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/go-sql-driver/mysql"
 )
 
-// Config は設定の構造体です。
-type Config struct {
-	ServerPort string `json:"server_port"`
-}
-
 // LoadConfig は設定ファイルを読み込みます。
-func LoadConfig(filename string) (Config, error) {
+func LoadConfig(filename string) (model.Config, error) {
 	bytes, err := ioutil.ReadFile(filename)
 	if err != nil {
-		return Config{}, err
+		return model.Config{}, err
 	}
 
-	var config Config
+	var config model.Config
 	if err := json.Unmarshal(bytes, &config); err != nil {
-		return Config{}, err
+		return model.Config{}, err
 	}
 
 	return config, nil
@@ -49,11 +42,14 @@ func fetchCommitsPeriodically() {
 
 func main() {
 	env := os.Getenv("APP_ENV")
-	var config Config
+	var config model.Config
 	var err error
 
 	if env == "production" {
 		config, err = LoadConfig("config.production.json")
+	} else if env == "docker_local" {
+		config, err = LoadConfig("config.docker_local.json")
+		print("docker_local mode")
 	} else {
 		config, err = LoadConfig("config.local.json")
 	}
@@ -64,9 +60,8 @@ func main() {
 
 	//localDBPath, s3Client, bucketName, fileKey := util.ConnectS3AWS()
 
-	localDBPath := "todos.db"
 	// データベースに接続
-	db.InitDB(localDBPath)
+	db.InitDB(config)
 	database := db.GetDB()
 	defer db.CloseDB()
 
@@ -78,7 +73,7 @@ func main() {
 
 	go func() {
 		// サーバー起動後、初回のフェッチは遅延させる
-		time.Sleep(30 * time.Minute) //もっといい書き方を考えたい、別プログラムとか
+		time.Sleep(5 * time.Minute) //もっといい書き方を考えたい、別プログラムとか
 		fetchCommitsPeriodically()
 	}()
 

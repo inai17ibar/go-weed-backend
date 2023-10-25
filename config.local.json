@@ -4,5 +4,9 @@
         "AllowedOrigins": ["http://localhost:3000"],
         "AllowedMethods": ["GET", "POST", "OPTIONS", "DELETE", "PUT"],
         "AllowedHeaders": ["Content-Type"]
-      }
+      },
+    "DBHost": "mysql",
+    "DBPort": "3306",
+    "DBUser": "inai17ibar",
+    "DBName": "todo_weed_mysql"
 }
